@@ -245,40 +245,64 @@ def save_user_data(data):
 
 def format_readable_text(text):
     """가독성 향상을 위한 마크다운 텍스트 자동 가공 함수
-    - 줄 맨 앞 불필요한 불릿(*) 기호 제거
-    - 콜론(:) 기준 제목/본문 분리, 줄바꿈 및 좌측 블록 들여쓰기(margin-left) 적용
-    - 긴 문장 자동 줄바꿈 처리
+    - 엉킨 마크다운 볼드(**) 기호 및 맨 앞 불릿(*) 기호 자동 제거
+    - 콜론(:) 기준 제목/본문 병합 후 줄바꿈 및 좌측 블록 들여쓰기(margin-left) 적용
     """
     if not text:
         return ""
     
+    # 단독으로 존재하는 ** 줄 제거
+    text = re.sub(r'^\s*\*\*\s*$', '', text, flags=re.MULTILINE)
+    
     lines = text.splitlines()
     formatted_lines = []
     
-    for line in lines:
-        stripped = line.strip()
+    i = 0
+    while i < len(lines):
+        line = lines[i].strip()
         
-        # 특수 라인(제목#, 표|, 코드블록```, 구분선---) 제외
-        if stripped.startswith(('#', '|', '```', '---')) or not stripped:
-            formatted_lines.append(line)
+        if not line:
+            i += 1
             continue
+            
+        # 특수 라인(제목#, 표|, 코드블록```, 구분선---) 유지
+        if line.startswith(('#', '|', '```', '---')):
+            formatted_lines.append(line)
+            i += 1
+            continue
+
+        # 맨 앞 불필요한 불릿 기호 (* 또는 -) 및 볼드(**) 제거
+        line = re.sub(r'^[\*\-]\s*', '', line)
+        line = line.replace('**', '').strip()
+
+        # 콜론(:) 구문 감지 (URL 제외)
+        is_colon_title = ':' in line and not any(proto in line for proto in ['http://', 'https://'])
         
-        # 줄 맨 앞의 불필요한 마크다운 불릿(* 또는 -) 기호 완전 제거
-        stripped = re.sub(r'^[\*\-]\s*', '', stripped)
-        
-        # 콜론(:)이 포함된 설명 구문 처리 (단, URL 주소는 제외)
-        if ':' in stripped and not any(proto in stripped for proto in ['http://', 'https://']):
-            parts = stripped.split(':', 1)
+        if is_colon_title:
+            parts = line.split(':', 1)
             title = parts[0].strip()
             content = parts[1].strip()
             
-            # 제목 내부 불릿 기호 재확인 및 제거
-            title = re.sub(r'^[\*\-]\s*', '', title)
+            # 콜론 뒤 내용이 없거나 다음 줄로 분리된 경우 다음 내용 줄 자동 탐색 및 병합
+            if not content:
+                peek_i = i + 1
+                while peek_i < len(lines):
+                    next_raw = lines[peek_i].strip()
+                    if not next_raw or next_raw == '**':
+                        peek_i += 1
+                        continue
+                    # 다음 항목을 만난 경우 중단
+                    if ':' in next_raw or re.match(r'^\d+[\.\)]', next_raw):
+                        break
+                    # 내용 결합
+                    content = re.sub(r'^[\*\-]\s*', '', next_raw).replace('**', '').strip()
+                    i = peek_i
+                    break
             
+            # 본문 긴 글 자동 줄바꿈 가공
+            processed_content = ""
             if content:
-                # 본문 긴 글 자동 줄바꿈 가공
                 sentences = re.split(r'(?<=\.)\s+', content)
-                processed_content = ""
                 curr_len = 0
                 for idx, s in enumerate(sentences):
                     curr_len += len(s)
@@ -287,16 +311,19 @@ def format_readable_text(text):
                         curr_len = 0
                     else:
                         processed_content += s + (" " if idx < len(sentences) - 1 else "")
-                
-                # 콜론 기준 줄바꿈 + 하단 본문 좌측 블록 들여쓰기(margin-left: 1.5rem) 적용
-                formatted_block = f"**{title} :**\n<div style='margin-left: 1.5rem; line-height: 1.85; margin-bottom: 0.8rem; word-break: keep-all;'>{processed_content}</div>"
-                formatted_lines.append(formatted_block)
+            
+            # 깔끔하게 분리된 HTML 구조 생성 (제목은 Bold, 본문은 1.5rem 들여쓰기)
+            if processed_content:
+                formatted_block = f"<div style='margin-top: 0.7rem; margin-bottom: 0.2rem; font-weight: bold;'>{title} :</div>\n<div style='margin-left: 1.5rem; line-height: 1.85; margin-bottom: 0.8rem; word-break: keep-all;'>{processed_content}</div>"
             else:
-                formatted_lines.append(f"**{title} :**")
+                formatted_block = f"<div style='margin-top: 0.7rem; margin-bottom: 0.4rem; font-weight: bold;'>{title} :</div>"
+            
+            formatted_lines.append(formatted_block)
+            i += 1
             continue
 
-        # 일반 문장 처리 (콜론이 없는 경우)
-        sentences = re.split(r'(?<=\.)\s+', stripped)
+        # 콜론이 없는 일반 문장 처리
+        sentences = re.split(r'(?<=\.)\s+', line)
         if len(sentences) > 1:
             processed_line = ""
             curr_len = 0
@@ -309,8 +336,10 @@ def format_readable_text(text):
                     processed_line += s + (" " if idx < len(sentences) - 1 else "")
             formatted_lines.append(processed_line)
         else:
-            formatted_lines.append(stripped)
-            
+            formatted_lines.append(line)
+        
+        i += 1
+
     return "\n".join(formatted_lines)
 
 if "user_data" not in st.session_state:
