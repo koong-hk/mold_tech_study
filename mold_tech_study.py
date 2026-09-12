@@ -4,7 +4,7 @@ import json
 import os
 
 # -----------------------------------------------------------------------------
-# 1. 페이지 설정 및 CSS 적용 (단락 들여쓰기 및 줄간격 강화)
+# 1. 페이지 설정 및 CSS 적용 (제목 간격 확대 및 계층별 들여쓰기 적용)
 # -----------------------------------------------------------------------------
 st.set_page_config(page_title="금형기술사 학습 시스템", layout="wide")
 
@@ -26,25 +26,46 @@ st.markdown("""
         }
         
         /* --------------------------------------------------------------------- */
-        /* 서식 적용 화면의 단락 첫 줄 들여쓰기 및 단락 구분 디자인 */
+        /* 서식 적용 화면의 계층별 들여쓰기 및 제목 간격 스타일 지정 */
         /* --------------------------------------------------------------------- */
-        div[data-testid="stMarkdownContainer"] p {
-            text-indent: 1.5em !important;     /* 문단 첫 줄 들여쓰기 */
-            line-height: 1.90 !important;      /* 줄간격 넓히기 */
-            margin-bottom: 1.3em !important;   /* 단락 사이 여백 명확화 */
-            word-break: keep-all !important;   /* 한글 단어 깨짐 방지 */
-            font-size: 1.05rem !important;     /* 가독성을 위한 약간의 글자 크기 확대 */
+        
+        /* 1. 큰 제목 (H1, H2): 간격을 크게 하고 들여쓰기 없음 */
+        div[data-testid="stMarkdownContainer"] h1,
+        div[data-testid="stMarkdownContainer"] h2 {
+            margin-top: 2.2em !important;      /* 위쪽 간격 확대 */
+            margin-bottom: 1.0em !important;   /* 아래쪽 간격 확대 */
+            margin-left: 0px !important;
+            text-indent: 0px !important;
+            border-bottom: 1px solid #ddd;     /* 시각적 구분선 (선택적) */
+            padding-bottom: 0.3em;
         }
         
-        /* 제목 및 목록 요소는 들여쓰기에서 제외 */
-        div[data-testid="stMarkdownContainer"] h1,
-        div[data-testid="stMarkdownContainer"] h2,
+        /* 2. 소제목 (H3, H4, H5): 1탭 (약 1.5em) 들여쓰기 */
         div[data-testid="stMarkdownContainer"] h3,
         div[data-testid="stMarkdownContainer"] h4,
-        div[data-testid="stMarkdownContainer"] ul,
-        div[data-testid="stMarkdownContainer"] ol,
-        div[data-testid="stMarkdownContainer"] li {
+        div[data-testid="stMarkdownContainer"] h5 {
+            margin-left: 1.5em !important;     /* 1탭 들여쓰기 */
+            margin-top: 1.5em !important;      /* 소제목 위 여백 */
+            margin-bottom: 0.6em !important;   /* 소제목 아래 여백 */
             text-indent: 0px !important;
+        }
+        
+        /* 3. 소제목 아래 단락 (p): 2탭 (약 3.0em) 들여쓰기 */
+        div[data-testid="stMarkdownContainer"] p {
+            margin-left: 3.0em !important;     /* 2탭 들여쓰기 */
+            text-indent: 0px !important;
+            line-height: 1.75 !important;      /* 줄간격 넉넉하게 */
+            margin-bottom: 1.0em !important;   /* 단락 사이 여백 */
+            word-break: keep-all !important;   /* 한글 단어 깨짐 방지 */
+            font-size: 1.05rem !important;
+        }
+        
+        /* 4. 리스트 목록 (UL, OL): 단락과 마찬가지로 2탭 들여쓰기 맞춰 정렬 */
+        div[data-testid="stMarkdownContainer"] ul,
+        div[data-testid="stMarkdownContainer"] ol {
+            margin-left: 3.0em !important;     /* 2탭 들여쓰기 */
+            line-height: 1.75 !important;
+            margin-bottom: 1.0em !important;
         }
     </style>
 """, unsafe_allow_html=True)
@@ -184,12 +205,12 @@ else:
         st.rerun()
 
     # 2. 문제 상자 및 중요도 영역 (80% : 20%)
-    col_prob, col_star = st.columns([75, 25])
+    col_prob, col_star = st.columns([80, 20])
 
     with col_prob:
         st.markdown(f"""
             <div style="background-color:#f0f2f6; padding: 10px 15px; border-radius: 8px; margin-top: 4px;">
-                <h3 style="color:#1f77b4; margin: 0px 0px 4px 0px; font-size: 100%; font-weight: bold; line-height: 1.3;">📝 {q_text}</h3>
+                <h3 style="color:#1f77b4; margin: 0px 0px 4px 0px; font-size: 95%; font-weight: bold; line-height: 1.3;">📝 {q_text}</h3>
                 <span style="color:#555; font-size: 75%;">현재 조회수: {q_data['clicks']}회</span>
             </div>
         """, unsafe_allow_html=True)
