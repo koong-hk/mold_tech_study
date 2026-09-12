@@ -12,8 +12,8 @@ st.markdown("""
     <style>
         /* 1. 메인 영역 상단 여백 최소화 (상단으로 이동) */
         .block-container {
-            padding-top: 1.0rem !important;
-            padding-bottom: 1rem !important;
+            padding-top: 1.5rem !important;
+            padding-bottom: 1.5rem !important;
         }
         
         /* 2. 제목 글자 크기 축소 (기본 H1 크기의 70% 수준) */
