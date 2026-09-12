@@ -318,7 +318,7 @@ else:
             save_user_data(st.session_state.user_data)
             st.rerun()
 
-    tab1, tab2, tab3, tab4 = st.tabs(["📖 답안 개념 설명", "✅ 모범 답안", "📎 추가 자료 및 메모", "🔍 구글 검색"])
+    tab1, tab2, tab3, tab4 = st.tabs(["📖 개념", "✅ 모범 답안", "📎 추가 자료 및 메모", "🔍 구글 검색"])
 
     # TAB 1: 개념 설명
     with tab1:
@@ -373,7 +373,7 @@ else:
 
         col_t2, col_h2, col_b2 = st.columns([70, 16, 14], vertical_alignment="center")
         with col_t2:
-            st.markdown("### 2. 실제 시험 모범 답안")
+            st.markdown("### 2. 모범 답안")
         with col_h2:
             toggle_label = "👁️ 입력창 보이기" if is_answer_hidden else "🙈 입력창 숨기기"
             if st.button(toggle_label, key=f"btn_toggle_answer_{q_text}", use_container_width=False):
