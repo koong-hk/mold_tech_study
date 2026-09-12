@@ -12,7 +12,7 @@ st.markdown("""
     <style>
         /* 1. 메인 영역 상단 여백 최소화 (상단으로 이동) */
         .block-container {
-            padding-top: 2.5rem !important;
+            padding-top: 3.0rem !important;
             padding-bottom: 1.5rem !important;
         }
         
@@ -41,7 +41,7 @@ st.markdown("""
             margin-top: 0px !important;
             margin-bottom: 0px !important;
             width: auto !important; /* 글자 수에 맞추어 자동 조절 */
-            padding: 5px 5px !important;
+            padding: 0px 0px !important;
         }
 
         /* 5. 좌측 사이드바 필터 라벨 좌측 정렬 및 간격 축소 */
@@ -52,7 +52,7 @@ st.markdown("""
             padding-bottom: 0px !important;
         }
         div[data-testid="stSidebar"] div[data-testid="stSelectbox"] {
-            margin-bottom: 2px !important;
+            margin-bottom: 0px !important;
         }
         
         /* 요소 간 기본 세로 간격(gap) 축소 */
