@@ -12,7 +12,7 @@ st.markdown("""
     <style>
         /* 1. 메인 영역 상단 여백 최소화 (상단으로 이동) */
         .block-container {
-            padding-top: 1.5rem !important;
+            padding-top: 2.5rem !important;
             padding-bottom: 1.5rem !important;
         }
         
@@ -29,7 +29,7 @@ st.markdown("""
             padding: 0px !important;
         }
         div[data-testid="stFileUploader"] section {
-            padding: 6px 12px !important; /* 높이는 줄이고 좌우 여백은 동일하게 */
+            padding: 5px 5px !important; /* 높이는 줄이고 좌우 여백은 동일하게 */
         }
 
         /* 4. 모든 버튼 안쪽 글자 가운데 정렬 & 8. 가로 사이즈 글자수에 맞춤 */
