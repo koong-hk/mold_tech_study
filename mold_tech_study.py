@@ -25,7 +25,7 @@ st.markdown("""
 
         /* 3. 좌측 파일 업로더 가로/세로 여백 조정 */
         div[data-testid="stFileUploader"] {
-            width: 100% !important;
+            width: 80% !important;
             padding: 0px !important;
         }
         div[data-testid="stFileUploader"] section {
@@ -52,7 +52,7 @@ st.markdown("""
             padding-bottom: 0px !important;
         }
         div[data-testid="stSidebar"] div[data-testid="stSelectbox"] {
-            margin-bottom: 6px !important;
+            margin-bottom: 2px !important;
         }
         
         /* 요소 간 기본 세로 간격(gap) 축소 */
