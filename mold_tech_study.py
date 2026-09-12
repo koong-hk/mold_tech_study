@@ -131,55 +131,82 @@ st.markdown("""
             margin-bottom: 0px !important;
         }
         
-        /* 10. 마크다운 서식 적용 화면 가독성 및 계층별 들여쓰기/번호 스타일링 */
+        /* 10. 마크다운 본문 기본 서식 */
         div[data-testid="stMarkdownContainer"] p {
             line-height: 1.85 !important;
-            margin-bottom: 0.9em !important;
+            margin-bottom: 0.8em !important;
             word-break: keep-all !important;
             font-size: 1.02rem !important;
         }
 
-        /* 1계층 순서 있는 목록 (1. 2. 3.) */
+        /* --- 계층별 목록 들여쓰기 및 번호 스타일링 --- */
+        
+        /* [순서 있는 목록] 1계층: 1. 2. 3. (아라비아 숫자) */
         div[data-testid="stMarkdownContainer"] ol {
             list-style-type: decimal !important;
-            margin-left: 1.8em !important;
+            margin-left: 1.6em !important;
             padding-left: 0.2em !important;
             margin-bottom: 0.8em !important;
         }
-        /* 2계층 순서 있는 목록 (A. B. C.) */
+        
+        /* [순서 있는 목록] 2계층: 1) 2) 3) (숫자 + 괄호) */
         div[data-testid="stMarkdownContainer"] ol ol {
-            list-style-type: upper-alpha !important;
-            margin-left: 1.6em !important;
-            margin-top: 0.3em !important;
-            margin-bottom: 0.5em !important;
+            list-style-type: none !important;
+            counter-reset: sub-item;
+            margin-left: 1.2em !important;
+            margin-top: 0.4em !important;
+            margin-bottom: 0.6em !important;
+            padding-left: 0px !important;
         }
-        /* 3계층 순서 있는 목록 (a. b. c.) */
-        div[data-testid="stMarkdownContainer"] ol ol ol {
-            list-style-type: lower-alpha !important;
-            margin-left: 1.6em !important;
+        div[data-testid="stMarkdownContainer"] ol ol > li {
+            counter-increment: sub-item;
+            position: relative;
+        }
+        div[data-testid="stMarkdownContainer"] ol ol > li::before {
+            content: counter(sub-item) ") ";
+            font-weight: bold;
+            display: inline-block;
+            width: 1.6em;
+            margin-left: -1.6em;
         }
 
-        /* 1계층 순서 없는 목록 (● 채운 원) */
+        /* [순서 있는 목록] 3계층: ① ② ③ (동그라미 숫자) */
+        div[data-testid="stMarkdownContainer"] ol ol ol {
+            list-style-type: none !important;
+            counter-reset: sub-sub-item;
+            margin-left: 1.4em !important;
+            margin-top: 0.3em !important;
+            padding-left: 0px !important;
+        }
+        div[data-testid="stMarkdownContainer"] ol ol ol > li {
+            counter-increment: sub-sub-item;
+        }
+        div[data-testid="stMarkdownContainer"] ol ol ol > li::before {
+            content: counter(sub-sub-item, circulating-decimal) " ";
+            font-weight: normal;
+            display: inline-block;
+            width: 1.5em;
+            margin-left: -1.5em;
+        }
+
+        /* [순서 없는 목록] 1계층: ● / 2계층: ○ / 3계층: ■ */
         div[data-testid="stMarkdownContainer"] ul {
             list-style-type: disc !important;
-            margin-left: 1.8em !important;
+            margin-left: 1.6em !important;
             padding-left: 0.2em !important;
             margin-bottom: 0.8em !important;
         }
-        /* 2계층 순서 없는 목록 (○ 빈 원) */
         div[data-testid="stMarkdownContainer"] ul ul {
             list-style-type: circle !important;
-            margin-left: 1.6em !important;
+            margin-left: 1.4em !important;
             margin-top: 0.3em !important;
-            margin-bottom: 0.5em !important;
         }
-        /* 3계층 순서 없는 목록 (■ 사각형) */
         div[data-testid="stMarkdownContainer"] ul ul ul {
             list-style-type: square !important;
-            margin-left: 1.6em !important;
+            margin-left: 1.4em !important;
         }
 
-        /* 리스트 항목 높이 및 여백 */
+        /* 리스트 항목 공통 스타일 */
         div[data-testid="stMarkdownContainer"] li {
             line-height: 1.8 !important;
             margin-bottom: 0.4em !important;
@@ -218,8 +245,9 @@ def save_user_data(data):
 
 def format_readable_text(text):
     """가독성 향상을 위한 마크다운 텍스트 자동 가공 함수
-    - 콜론(:) 기준 제목/본문 분리, 줄바꿈 및 블록 들여쓰기(margin-left) 적용
-    - 긴 글 45자 기준 자동 줄바꿈
+    - 줄 맨 앞 불필요한 불릿(*) 기호 제거
+    - 콜론(:) 기준 제목/본문 분리, 줄바꿈 및 좌측 블록 들여쓰기(margin-left) 적용
+    - 긴 문장 자동 줄바꿈 처리
     """
     if not text:
         return ""
@@ -230,16 +258,22 @@ def format_readable_text(text):
     for line in lines:
         stripped = line.strip()
         
-        # 특수 라인(제목, 표, 코드블록, 구분선) 제외
+        # 특수 라인(제목#, 표|, 코드블록```, 구분선---) 제외
         if stripped.startswith(('#', '|', '```', '---')) or not stripped:
             formatted_lines.append(line)
             continue
+        
+        # 줄 맨 앞의 불필요한 마크다운 불릿(* 또는 -) 기호 완전 제거
+        stripped = re.sub(r'^[\*\-]\s*', '', stripped)
         
         # 콜론(:)이 포함된 설명 구문 처리 (단, URL 주소는 제외)
         if ':' in stripped and not any(proto in stripped for proto in ['http://', 'https://']):
             parts = stripped.split(':', 1)
             title = parts[0].strip()
             content = parts[1].strip()
+            
+            # 제목 내부 불릿 기호 재확인 및 제거
+            title = re.sub(r'^[\*\-]\s*', '', title)
             
             if content:
                 # 본문 긴 글 자동 줄바꿈 가공
@@ -254,13 +288,15 @@ def format_readable_text(text):
                     else:
                         processed_content += s + (" " if idx < len(sentences) - 1 else "")
                 
-                # 콜론 기준 줄바꿈 및 하단 내용 좌측 블록 들여쓰기(margin-left: 1.2rem) 적용
-                formatted_block = f"**{title} :**\n<div style='margin-left: 1.2rem; line-height: 1.85; margin-bottom: 0.6rem; word-break: keep-all;'>{processed_content}</div>"
+                # 콜론 기준 줄바꿈 + 하단 본문 좌측 블록 들여쓰기(margin-left: 1.5rem) 적용
+                formatted_block = f"**{title} :**\n<div style='margin-left: 1.5rem; line-height: 1.85; margin-bottom: 0.8rem; word-break: keep-all;'>{processed_content}</div>"
                 formatted_lines.append(formatted_block)
-                continue
+            else:
+                formatted_lines.append(f"**{title} :**")
+            continue
 
-        # 일반 문장 긴 글 처리
-        sentences = re.split(r'(?<=\.)\s+', line)
+        # 일반 문장 처리 (콜론이 없는 경우)
+        sentences = re.split(r'(?<=\.)\s+', stripped)
         if len(sentences) > 1:
             processed_line = ""
             curr_len = 0
@@ -273,7 +309,7 @@ def format_readable_text(text):
                     processed_line += s + (" " if idx < len(sentences) - 1 else "")
             formatted_lines.append(processed_line)
         else:
-            formatted_lines.append(line)
+            formatted_lines.append(stripped)
             
     return "\n".join(formatted_lines)
 
@@ -610,7 +646,7 @@ else:
         
         if search_query:
             encoded_query = search_query.replace(" ", "+")
-            search_url = f"[https://www.google.com/search?q=](https://www.google.com/search?q=){encoded_query}"
+            search_url = f"https://www.google.com/search?q={encoded_query}"
             
             st.markdown(
                 f"""
