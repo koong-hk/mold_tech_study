@@ -4,7 +4,7 @@ import json
 import os
 
 # -----------------------------------------------------------------------------
-# 1. 페이지 설정 및 상단 여백 조정 CSS 적용
+# 1. 페이지 설정 및 CSS 적용 (단락 들여쓰기 및 줄간격 강화)
 # -----------------------------------------------------------------------------
 st.set_page_config(page_title="금형기술사 학습 시스템", layout="wide")
 
@@ -23,6 +23,28 @@ st.markdown("""
         div.stButton > button {
             margin-top: 0px !important;
             margin-bottom: 0px !important;
+        }
+        
+        /* --------------------------------------------------------------------- */
+        /* 서식 적용 화면의 단락 첫 줄 들여쓰기 및 단락 구분 디자인 */
+        /* --------------------------------------------------------------------- */
+        div[data-testid="stMarkdownContainer"] p {
+            text-indent: 1.2em !important;     /* 문단 첫 줄 들여쓰기 */
+            line-height: 1.75 !important;      /* 줄간격 넓히기 */
+            margin-bottom: 1.0em !important;   /* 단락 사이 여백 명확화 */
+            word-break: keep-all !important;   /* 한글 단어 깨짐 방지 */
+            font-size: 1.05rem !important;     /* 가독성을 위한 약간의 글자 크기 확대 */
+        }
+        
+        /* 제목 및 목록 요소는 들여쓰기에서 제외 */
+        div[data-testid="stMarkdownContainer"] h1,
+        div[data-testid="stMarkdownContainer"] h2,
+        div[data-testid="stMarkdownContainer"] h3,
+        div[data-testid="stMarkdownContainer"] h4,
+        div[data-testid="stMarkdownContainer"] ul,
+        div[data-testid="stMarkdownContainer"] ol,
+        div[data-testid="stMarkdownContainer"] li {
+            text-indent: 0px !important;
         }
     </style>
 """, unsafe_allow_html=True)
@@ -161,7 +183,7 @@ else:
         st.session_state.current_q = None
         st.rerun()
 
-    # 2. 문제 상자 및 중요도 영역 (80% : 220)
+    # 2. 문제 상자 및 중요도 영역 (80% : 20%)
     col_prob, col_star = st.columns([80, 20])
 
     with col_prob:
