@@ -217,7 +217,10 @@ def save_user_data(data):
         json.dump(data, f, ensure_ascii=False, indent=4)
 
 def format_readable_text(text):
-    """가독성 향상을 위한 마크다운 텍스트 자동 가공 함수"""
+    """가독성 향상을 위한 마크다운 텍스트 자동 가공 함수
+    - 콜론(:) 기준 제목/본문 분리, 줄바꿈 및 블록 들여쓰기(margin-left) 적용
+    - 긴 글 45자 기준 자동 줄바꿈
+    """
     if not text:
         return ""
     
@@ -226,10 +229,37 @@ def format_readable_text(text):
     
     for line in lines:
         stripped = line.strip()
+        
+        # 특수 라인(제목, 표, 코드블록, 구분선) 제외
         if stripped.startswith(('#', '|', '```', '---')) or not stripped:
             formatted_lines.append(line)
             continue
         
+        # 콜론(:)이 포함된 설명 구문 처리 (단, URL 주소는 제외)
+        if ':' in stripped and not any(proto in stripped for proto in ['http://', 'https://']):
+            parts = stripped.split(':', 1)
+            title = parts[0].strip()
+            content = parts[1].strip()
+            
+            if content:
+                # 본문 긴 글 자동 줄바꿈 가공
+                sentences = re.split(r'(?<=\.)\s+', content)
+                processed_content = ""
+                curr_len = 0
+                for idx, s in enumerate(sentences):
+                    curr_len += len(s)
+                    if curr_len >= 45 and s.endswith('.'):
+                        processed_content += s + "  \n"
+                        curr_len = 0
+                    else:
+                        processed_content += s + (" " if idx < len(sentences) - 1 else "")
+                
+                # 콜론 기준 줄바꿈 및 하단 내용 좌측 블록 들여쓰기(margin-left: 1.2rem) 적용
+                formatted_block = f"**{title} :**\n<div style='margin-left: 1.2rem; line-height: 1.85; margin-bottom: 0.6rem; word-break: keep-all;'>{processed_content}</div>"
+                formatted_lines.append(formatted_block)
+                continue
+
+        # 일반 문장 긴 글 처리
         sentences = re.split(r'(?<=\.)\s+', line)
         if len(sentences) > 1:
             processed_line = ""
@@ -306,7 +336,6 @@ st.sidebar.header("🔍 문제 필터링")
 
 rounds = ["전체"] + sorted(list(df['회차'].unique()), reverse=True)
 
-# 교시 선택 옵션: 전체, 2~4교시 통합 옵션, 개별 교시
 unique_periods = sorted(list(df['교시'].unique()))
 periods = ["전체", "2~4교시"] + [str(p) for p in unique_periods]
 
@@ -320,17 +349,14 @@ sort_by_clicks = st.sidebar.checkbox("자주 본 문제 순으로 정렬 (조회
 
 filtered_df = df.copy()
 
-# 1) 회차 필터링
 if sel_round != "전체":
     filtered_df = filtered_df[filtered_df['회차'] == sel_round]
 
-# 2) 교시 필터링 (2~4교시 통합 필터 적용)
 if sel_period == "2~4교시":
     filtered_df = filtered_df[filtered_df['교시'].astype(str).isin(["2", "3", "4"])]
 elif sel_period != "전체":
     filtered_df = filtered_df[filtered_df['교시'].astype(str) == str(sel_period)]
 
-# 3) 분류 필터링
 if sel_category != "전체":
     filtered_df = filtered_df[filtered_df['분류'] == sel_category]
 
@@ -465,11 +491,11 @@ else:
                 st.write("---")
                 st.markdown("#### 📖 개념 설명 (서식 적용 화면)")
                 with st.container(border=True):
-                    st.markdown(format_readable_text(q_data['concept']))
+                    st.markdown(format_readable_text(q_data['concept']), unsafe_allow_html=True)
         else:
             if q_data['concept']:
                 with st.container(border=True):
-                    st.markdown(format_readable_text(q_data['concept']))
+                    st.markdown(format_readable_text(q_data['concept']), unsafe_allow_html=True)
             else:
                 st.caption("작성된 개념 설명이 없습니다. '입력창 보이기'를 눌러 내용을 입력해 보세요.")
 
@@ -515,11 +541,11 @@ else:
                 st.write("---")
                 st.markdown("#### 📄 모범 답안 (서식 적용 화면)")
                 with st.container(border=True):
-                    st.markdown(format_readable_text(q_data['answer']))
+                    st.markdown(format_readable_text(q_data['answer']), unsafe_allow_html=True)
         else:
             if q_data['answer']:
                 with st.container(border=True):
-                    st.markdown(format_readable_text(q_data['answer']))
+                    st.markdown(format_readable_text(q_data['answer']), unsafe_allow_html=True)
             else:
                 st.caption("작성된 모범 답안이 없습니다. '입력창 보이기'를 눌러 내용을 입력해 보세요.")
 
@@ -565,11 +591,11 @@ else:
                 st.write("---")
                 st.markdown("#### 📎 추가 자료 및 메모 (서식 적용 화면)")
                 with st.container(border=True):
-                    st.markdown(format_readable_text(q_data['extra']))
+                    st.markdown(format_readable_text(q_data['extra']), unsafe_allow_html=True)
         else:
             if q_data['extra']:
                 with st.container(border=True):
-                    st.markdown(format_readable_text(q_data['extra']))
+                    st.markdown(format_readable_text(q_data['extra']), unsafe_allow_html=True)
             else:
                 st.caption("작성된 추가 자료가 없습니다. '입력창 보이기'를 눌러 내용을 입력해 보세요.")
 
@@ -604,7 +630,6 @@ else:
         st.markdown("### 5. 이미지 및 설명 자료")
         st.info("금형 구조 도면, 3D CAD 캡처, 시뮬레이션 결과 이미지와 관련 설명을 함께 등록 및 확인할 수 있습니다.")
         
-        # 1. 신규 이미지 업로드 및 설명 저장 영역
         with st.expander("➕ 새 이미지 및 설명 추가하기", expanded=False):
             uploaded_img = st.file_uploader(
                 "이미지 파일 업로드", 
@@ -641,7 +666,6 @@ else:
 
         st.write("---")
 
-        # 2. 저장된 이미지 목록 및 6:4 상세 보기 영역
         image_notes_list = q_data.get('image_notes', [])
 
         if not image_notes_list:
@@ -675,7 +699,7 @@ else:
                 note_content = selected_item.get('note', '')
                 if note_content:
                     with st.container(border=True):
-                        st.markdown(format_readable_text(note_content))
+                        st.markdown(format_readable_text(note_content), unsafe_allow_html=True)
                 else:
                     st.caption("작성된 설명 내용이 없습니다.")
                 
