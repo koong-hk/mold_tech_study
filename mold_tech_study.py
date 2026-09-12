@@ -18,7 +18,7 @@ st.markdown("""
     <style>
         /* 1. 메인 영역 상단 여백 최소화 */
         .block-container {
-            padding-top: 2.5rem !important;
+            padding-top: 3.0rem !important;
             padding-bottom: 1.5rem !important;
         }
         
@@ -26,10 +26,10 @@ st.markdown("""
         div[data-testid="stMarkdownContainer"] h1 {
             font-size: 1.5rem !important;
             margin-top: 5px !important;
-            margin-bottom: 1.2rem !important;
+            margin-bottom: 1.5rem !important;
         }
 
-        /* 3. 좌측 파일 업로더 여백 조정 */
+        /* 3. 좌측 파일 업로더 가로/세로 여백 조정 */
         div[data-testid="stFileUploader"] {
             width: 90% !important;
             padding: 0px !important;
@@ -65,24 +65,54 @@ st.markdown("""
             gap: 0.25rem !important;
         }
 
+        section[data-testid="stSidebar"] label {
+            text-align: left !important;
+            justify-content: flex-start !important;
+            margin-bottom: 0px !important;
+            padding-bottom: 0px !important;
+            padding-top: 0px !important;
+        }
         section[data-testid="stSidebar"] label p {
             font-size: 0.88rem !important;
             font-weight: 600 !important;
             margin: 0 !important;
             padding: 0 !important;
+            text-align: left !important;
+        }
+
+        section[data-testid="stSidebar"] div[data-testid="stSelectbox"] {
+            margin-bottom: 6px !important;
+            margin-top: 0px !important;
+            padding: 0px !important;
         }
 
         section[data-testid="stSidebar"] div[data-baseweb="select"] > div {
             min-height: 32px !important;
             height: 32px !important;
-            padding: 0 8px !important;
+            padding-top: 0px !important;
+            padding-bottom: 0px !important;
+            padding-left: 8px !important;
+            padding-right: 8px !important;
+            display: flex !important;
+            align-items: center !important;
         }
 
-        /* 7. 상세 페이지 문제 박스 및 탭 간격 */
+        section[data-testid="stSidebar"] div[data-baseweb="select"] * {
+            font-size: 0.85rem !important;
+            line-height: 1.1 !important;
+        }
+
+        section[data-testid="stSidebar"] div[data-testid="stCheckbox"] {
+            margin-top: 4px !important;
+            margin-bottom: 4px !important;
+        }
+
+        /* 7. 상세 페이지 문제 박스와 하단 탭 사이 간격 */
         div[data-testid="stTabs"] {
-            margin-top: 1.2rem !important;
+            margin-top: 1.5rem !important;
         }
 
+        /* 8. 탭 상단 우측 버튼 동일 사이즈 및 우측 밀착 정렬 */
         div[data-testid="stTabs"] div[data-testid="stHorizontalBlock"] > div[data-testid="column"]:nth-child(2) div[data-testid="stButton"],
         div[data-testid="stTabs"] div[data-testid="stHorizontalBlock"] > div[data-testid="column"]:nth-child(3) div[data-testid="stButton"] {
             display: flex !important;
@@ -91,82 +121,85 @@ st.markdown("""
         div[data-testid="stTabs"] div[data-testid="stButton"] > button {
             width: 100% !important;
         }
+
+        /* 9. 중요도 설정 등 일반 Selectbox 라벨 여백 축소 */
+        div[data-testid="stSelectbox"] label {
+            margin-bottom: 2px !important;
+            padding-bottom: 0px !important;
+        }
+        div[data-testid="stSelectbox"] label p {
+            margin-bottom: 0px !important;
+        }
         
-        /* 8. 마크다운 본문 기본 서식 */
+        /* 10. 마크다운 서식 적용 화면 가독성 및 계층별 들여쓰기/번호 스타일링 */
         div[data-testid="stMarkdownContainer"] p {
             line-height: 1.85 !important;
-            margin-bottom: 0.6em !important;
+            margin-bottom: 0.9em !important;
             word-break: keep-all !important;
             font-size: 1.02rem !important;
         }
 
-        /* --- 계층별 목록 들여쓰기 및 번호 스타일링 --- */
-        
-        /* [순서 있는 목록] 1계층: 1. 2. 3. */
+        /* 1계층 순서 있는 목록 (1. 2. 3.) */
         div[data-testid="stMarkdownContainer"] ol {
             list-style-type: decimal !important;
-            margin-left: 1.6em !important;
+            margin-left: 1.8em !important;
             padding-left: 0.2em !important;
             margin-bottom: 0.8em !important;
         }
-        
-        /* [순서 있는 목록] 2계층: 1) 2) 3) 또는 (1) (2) */
+        /* 2계층 순서 있는 목록 (A. B. C.) */
         div[data-testid="stMarkdownContainer"] ol ol {
-            list-style-type: none !important;
-            counter-reset: sub-item;
-            margin-left: 1.2em !important;
-            margin-top: 0.4em !important;
-            margin-bottom: 0.6em !important;
-            padding-left: 0px !important;
-        }
-        div[data-testid="stMarkdownContainer"] ol ol > li {
-            counter-increment: sub-item;
-            position: relative;
-        }
-        div[data-testid="stMarkdownContainer"] ol ol > li::before {
-            content: counter(sub-item) ") ";
-            font-weight: bold;
-            display: inline-block;
-            width: 1.6em;
-            margin-left: -1.6em;
-        }
-
-        /* [순서 있는 목록] 3계층: ① ② ③ */
-        div[data-testid="stMarkdownContainer"] ol ol ol {
-            list-style-type: none !important;
-            counter-reset: sub-sub-item;
-            margin-left: 1.4em !important;
+            list-style-type: upper-alpha !important;
+            margin-left: 1.6em !important;
             margin-top: 0.3em !important;
-            padding-left: 0px !important;
+            margin-bottom: 0.5em !important;
         }
-        div[data-testid="stMarkdownContainer"] ol ol ol > li {
-            counter-increment: sub-sub-item;
-        }
-        div[data-testid="stMarkdownContainer"] ol ol ol > li::before {
-            content: counter(sub-sub-item, circulating-decimal) " ";
-            font-weight: normal;
-            display: inline-block;
-            width: 1.5em;
-            margin-left: -1.5em;
+        /* 3계층 순서 있는 목록 (a. b. c.) */
+        div[data-testid="stMarkdownContainer"] ol ol ol {
+            list-style-type: lower-alpha !important;
+            margin-left: 1.6em !important;
         }
 
-        /* 제목 서식 개결 */
+        /* 1계층 순서 없는 목록 (● 채운 원) */
+        div[data-testid="stMarkdownContainer"] ul {
+            list-style-type: disc !important;
+            margin-left: 1.8em !important;
+            padding-left: 0.2em !important;
+            margin-bottom: 0.8em !important;
+        }
+        /* 2계층 순서 없는 목록 (○ 빈 원) */
+        div[data-testid="stMarkdownContainer"] ul ul {
+            list-style-type: circle !important;
+            margin-left: 1.6em !important;
+            margin-top: 0.3em !important;
+            margin-bottom: 0.5em !important;
+        }
+        /* 3계층 순서 없는 목록 (■ 사각형) */
+        div[data-testid="stMarkdownContainer"] ul ul ul {
+            list-style-type: square !important;
+            margin-left: 1.6em !important;
+        }
+
+        /* 리스트 항목 높이 및 여백 */
+        div[data-testid="stMarkdownContainer"] li {
+            line-height: 1.8 !important;
+            margin-bottom: 0.4em !important;
+            word-break: keep-all !important;
+        }
+        
+        /* 제목 스타일링 */
         div[data-testid="stMarkdownContainer"] h2 {
-            margin-top: 1.4em !important;
-            margin-bottom: 0.6em !important;
+            margin-top: 1.6em !important;
+            margin-bottom: 0.7em !important;
             border-bottom: 1px solid #4a5568;
             padding-bottom: 0.3em;
-            color: #e2e8f0;
         }
         div[data-testid="stMarkdownContainer"] h3 {
-            margin-top: 1.2em !important;
+            margin-top: 1.3em !important;
             margin-bottom: 0.5em !important;
-            color: #63b3ed;
         }
         div[data-testid="stMarkdownContainer"] h4 {
-            margin-top: 0.9em !important;
+            margin-top: 1.0em !important;
             margin-bottom: 0.4em !important;
-            color: #cbd5e0;
         }
     </style>
 """, unsafe_allow_html=True)
@@ -183,111 +216,36 @@ def save_user_data(data):
     with open(USER_DATA_FILE, 'w', encoding='utf-8') as f:
         json.dump(data, f, ensure_ascii=False, indent=4)
 
-def wrap_text(text, target_len=45):
-    """문장이 길 경우 45자 기준 마침표 뒤 줄바꿈 가공"""
-    if not text:
-        return ""
-    sentences = re.split(r'(?<=\.)\s+', text)
-    if len(sentences) <= 1:
-        return text
-
-    processed = ""
-    curr_len = 0
-    for idx, s in enumerate(sentences):
-        curr_len += len(s)
-        if curr_len >= target_len and s.endswith('.'):
-            processed += s + "  \n"
-            curr_len = 0
-        else:
-            processed += s + (" " if idx < len(sentences) - 1 else "")
-    return processed
-
 def format_readable_text(text):
-    """가독성 향상을 위한 마크다운 텍스트 자동 가공 함수
-    1. 엉켜있는 헤더(#, ###) 및 구분선(---) 강제 개행 분리
-    2. 콜론(:) 기준 제목/본문 분리, 본문 들여쓰기(margin-left) 및 45자 자동 줄바꿈
-    3. 맨 앞 불필요한 *, - 불릿 제거 및 볼드(**) 기호 정리
-    """
+    """가독성 향상을 위한 마크다운 텍스트 자동 가공 함수"""
     if not text:
         return ""
-
-    # 1. 붙어버린 구분선과 제목(--- ### 등) 사전 강제 분리
-    text = re.sub(r'---\s*', '\n---\n', text)
-    text = re.sub(r'(#+)', r'\n\1', text)
-    text = re.sub(r'^\s*\*\*\s*$', '', text, flags=re.MULTILINE)
-
-    lines = text.splitlines()
-    formatted_blocks = []
     
-    i = 0
-    while i < len(lines):
-        line = lines[i].strip()
+    lines = text.splitlines()
+    formatted_lines = []
+    
+    for line in lines:
+        stripped = line.strip()
+        if stripped.startswith(('#', '|', '```', '---')) or not stripped:
+            formatted_lines.append(line)
+            continue
         
-        if not line:
-            i += 1
-            continue
-
-        # 2. 마크다운 원본 유지 항목 (제목, 구분선, 표, 인용구, 코드블록)
-        if line.startswith(('#', '---', '|', '```', '>')):
-            if line.startswith('#'):
-                formatted_blocks.append(f"\n{line}\n")
-            elif line.startswith('---'):
-                formatted_blocks.append("\n---\n")
-            else:
-                formatted_blocks.append(line)
-            i += 1
-            continue
-
-        # 3. 불필요한 앞쪽 불릿 기호 (* 또는 -) 및 찌꺼기 볼드 기호 제거
-        line = re.sub(r'^\s*[\*\-]\s*', '', line)
-        line = line.replace('**', '').strip()
-
-        # 4. 콜론(:) 문장 처리 (URL 내부 콜론 제외)
-        is_colon_title = ':' in line and not any(proto in line for proto in ['http://', 'https://'])
-        
-        if is_colon_title:
-            parts = line.split(':', 1)
-            title = parts[0].strip()
-            content = parts[1].strip()
+        sentences = re.split(r'(?<=\.)\s+', line)
+        if len(sentences) > 1:
+            processed_line = ""
+            curr_len = 0
+            for idx, s in enumerate(sentences):
+                curr_len += len(s)
+                if curr_len >= 45 and s.endswith('.'):
+                    processed_line += s + "  \n"
+                    curr_len = 0
+                else:
+                    processed_line += s + (" " if idx < len(sentences) - 1 else "")
+            formatted_lines.append(processed_line)
+        else:
+            formatted_lines.append(line)
             
-            # 콜론 뒤 본문이 비어있으면 다음 줄을 탐색해 자동 병합
-            if not content:
-                peek_i = i + 1
-                content_lines = []
-                while peek_i < len(lines):
-                    next_raw = lines[peek_i].strip()
-                    if not next_raw or next_raw == '**':
-                        peek_i += 1
-                        continue
-                    # 다음 항목(제목, 구분선, 콜론문장, 번호목록)을 만나면 정지
-                    if next_raw.startswith(('#', '---', '|', '```', '>')) or ':' in next_raw or re.match(r'^\d+[\.\)]', next_raw):
-                        break
-                    content_lines.append(re.sub(r'^\s*[\*\-]\s*', '', next_raw).replace('**', '').strip())
-                    peek_i += 1
-                
-                if content_lines:
-                    content = " ".join(content_lines)
-                    i = peek_i - 1
-
-            # 45자 기준 마침표 자동 줄바꿈 적용
-            processed_content = wrap_text(content, 45)
-            
-            # 콜론 제목(Bold + Blue color) 및 본문 들여쓰기(margin-left) 적용
-            if processed_content:
-                block = f"<div style='margin-top: 0.7rem; margin-bottom: 0.2rem; font-weight: bold; color: #63b3ed; font-size: 1.01rem;'>{title} :</div>\n<div style='margin-left: 1.5rem; line-height: 1.85; margin-bottom: 0.7rem; word-break: keep-all;'>{processed_content}</div>"
-            else:
-                block = f"<div style='margin-top: 0.7rem; margin-bottom: 0.3rem; font-weight: bold; color: #63b3ed; font-size: 1.01rem;'>{title} :</div>"
-            
-            formatted_blocks.append(block)
-            i += 1
-            continue
-
-        # 5. 일반 문장 45자 줄바꿈 처리
-        processed_line = wrap_text(line, 45)
-        formatted_blocks.append(processed_line)
-        i += 1
-
-    return "\n".join(formatted_blocks)
+    return "\n".join(formatted_lines)
 
 if "user_data" not in st.session_state:
     st.session_state.user_data = load_user_data()
@@ -347,25 +305,32 @@ df['중요도(별)'] = df['문제'].apply(lambda x: "⭐" * st.session_state.use
 st.sidebar.header("🔍 문제 필터링")
 
 rounds = ["전체"] + sorted(list(df['회차'].unique()), reverse=True)
+
+# 교시 선택 옵션: 전체, 2~4교시 통합 옵션, 개별 교시
 unique_periods = sorted(list(df['교시'].unique()))
 periods = ["전체", "2~4교시"] + [str(p) for p in unique_periods]
+
 categories = ["전체"] + sorted(list(df['분류'].unique()))
 
 sel_round = st.sidebar.selectbox("회차 선택", rounds)
 sel_period = st.sidebar.selectbox("교시 선택", periods)
 sel_category = st.sidebar.selectbox("분류 선택", categories)
+
 sort_by_clicks = st.sidebar.checkbox("자주 본 문제 순으로 정렬 (조회수 ⇧)")
 
 filtered_df = df.copy()
 
+# 1) 회차 필터링
 if sel_round != "전체":
     filtered_df = filtered_df[filtered_df['회차'] == sel_round]
 
+# 2) 교시 필터링 (2~4교시 통합 필터 적용)
 if sel_period == "2~4교시":
     filtered_df = filtered_df[filtered_df['교시'].astype(str).isin(["2", "3", "4"])]
 elif sel_period != "전체":
     filtered_df = filtered_df[filtered_df['교시'].astype(str) == str(sel_period)]
 
+# 3) 분류 필터링
 if sel_category != "전체":
     filtered_df = filtered_df[filtered_df['분류'] == sel_category]
 
@@ -459,7 +424,7 @@ else:
     ])
 
     # -------------------------------------------------------------------------
-    # TAB 1: 개념 설명 (동일 서식 적용)
+    # TAB 1: 개념 설명
     # -------------------------------------------------------------------------
     with tab1:
         st.markdown("### 1. 답안 개념 설명")
@@ -500,16 +465,16 @@ else:
                 st.write("---")
                 st.markdown("#### 📖 개념 설명 (서식 적용 화면)")
                 with st.container(border=True):
-                    st.markdown(format_readable_text(q_data['concept']), unsafe_allow_html=True)
+                    st.markdown(format_readable_text(q_data['concept']))
         else:
             if q_data['concept']:
                 with st.container(border=True):
-                    st.markdown(format_readable_text(q_data['concept']), unsafe_allow_html=True)
+                    st.markdown(format_readable_text(q_data['concept']))
             else:
                 st.caption("작성된 개념 설명이 없습니다. '입력창 보이기'를 눌러 내용을 입력해 보세요.")
 
     # -------------------------------------------------------------------------
-    # TAB 2: 모범 답안 (동일 서식 적용)
+    # TAB 2: 모범 답안
     # -------------------------------------------------------------------------
     with tab2:
         st.markdown("### 2. 실제 시험 모범 답안")
@@ -550,16 +515,16 @@ else:
                 st.write("---")
                 st.markdown("#### 📄 모범 답안 (서식 적용 화면)")
                 with st.container(border=True):
-                    st.markdown(format_readable_text(q_data['answer']), unsafe_allow_html=True)
+                    st.markdown(format_readable_text(q_data['answer']))
         else:
             if q_data['answer']:
                 with st.container(border=True):
-                    st.markdown(format_readable_text(q_data['answer']), unsafe_allow_html=True)
+                    st.markdown(format_readable_text(q_data['answer']))
             else:
                 st.caption("작성된 모범 답안이 없습니다. '입력창 보이기'를 눌러 내용을 입력해 보세요.")
 
     # -------------------------------------------------------------------------
-    # TAB 3: 추가 자료 및 메모 (동일 서식 적용)
+    # TAB 3: 추가 자료
     # -------------------------------------------------------------------------
     with tab3:
         st.markdown("### 3. 추가 자료 및 메모")
@@ -600,11 +565,11 @@ else:
                 st.write("---")
                 st.markdown("#### 📎 추가 자료 및 메모 (서식 적용 화면)")
                 with st.container(border=True):
-                    st.markdown(format_readable_text(q_data['extra']), unsafe_allow_html=True)
+                    st.markdown(format_readable_text(q_data['extra']))
         else:
             if q_data['extra']:
                 with st.container(border=True):
-                    st.markdown(format_readable_text(q_data['extra']), unsafe_allow_html=True)
+                    st.markdown(format_readable_text(q_data['extra']))
             else:
                 st.caption("작성된 추가 자료가 없습니다. '입력창 보이기'를 눌러 내용을 입력해 보세요.")
 
@@ -613,13 +578,13 @@ else:
     # -------------------------------------------------------------------------
     with tab4:
         st.markdown("### 4. 구글 검색")
-        st.info("문제를 해결하기 위해 관련된 최신 기술자료 및 도면 정보를 구글에서 바로 검색합니다.")
+        st.info("문제를 해결하기 위해 관련된 최신 technical자료 및 도면 정보를 구글에서 바로 검색합니다.")
         
         search_query = st.text_input("검색어 입력", value=q_text)
         
         if search_query:
             encoded_query = search_query.replace(" ", "+")
-            search_url = f"https://www.google.com/search?q={encoded_query}"
+            search_url = f"[https://www.google.com/search?q=](https://www.google.com/search?q=){encoded_query}"
             
             st.markdown(
                 f"""
@@ -639,6 +604,7 @@ else:
         st.markdown("### 5. 이미지 및 설명 자료")
         st.info("금형 구조 도면, 3D CAD 캡처, 시뮬레이션 결과 이미지와 관련 설명을 함께 등록 및 확인할 수 있습니다.")
         
+        # 1. 신규 이미지 업로드 및 설명 저장 영역
         with st.expander("➕ 새 이미지 및 설명 추가하기", expanded=False):
             uploaded_img = st.file_uploader(
                 "이미지 파일 업로드", 
@@ -675,6 +641,7 @@ else:
 
         st.write("---")
 
+        # 2. 저장된 이미지 목록 및 6:4 상세 보기 영역
         image_notes_list = q_data.get('image_notes', [])
 
         if not image_notes_list:
@@ -708,7 +675,7 @@ else:
                 note_content = selected_item.get('note', '')
                 if note_content:
                     with st.container(border=True):
-                        st.markdown(format_readable_text(note_content), unsafe_allow_html=True)
+                        st.markdown(format_readable_text(note_content))
                 else:
                     st.caption("작성된 설명 내용이 없습니다.")
                 
