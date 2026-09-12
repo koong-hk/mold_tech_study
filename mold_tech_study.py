@@ -184,7 +184,7 @@ else:
         st.rerun()
 
     # 2. 문제 상자 및 중요도 영역 (80% : 20%)
-    col_prob, col_star = st.columns([80, 20])
+    col_prob, col_star = st.columns([75, 25])
 
     with col_prob:
         st.markdown(f"""
