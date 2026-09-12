@@ -38,7 +38,7 @@ st.markdown("""
             width: 280px !important;
         }
 
-        /* 5. 버튼 글자 가운데 정렬 & 좌/우 균등 여백 */
+        /* 5. 기본 버튼 서식 */
         div.stButton > button {
             display: inline-flex !important;
             justify-content: center !important;
@@ -46,7 +46,6 @@ st.markdown("""
             text-align: center !important;
             margin-top: 5px !important;
             margin-bottom: 5px !important;
-            width: auto !important;
             padding: 6px 16px !important;
         }
         div.stButton > button p {
@@ -107,16 +106,23 @@ st.markdown("""
             margin-top: 1.5rem !important;
         }
 
-        /* 8. 탭 상단 우측 버튼 간격 최소화 및 우측 정렬 설정 */
-        div[data-testid="stTabs"] div[data-testid="stHorizontalBlock"] > div[data-testid="column"]:nth-child(2) div[data-testid="stButton"] {
-            display: flex !important;
-            justify-content: flex-end !important;
-            width: 100% !important;
-        }
+        /* 8. 탭 상단 우측 버튼 동일 사이즈 및 밀착 정렬 */
+        div[data-testid="stTabs"] div[data-testid="stHorizontalBlock"] > div[data-testid="column"]:nth-child(2) div[data-testid="stButton"],
         div[data-testid="stTabs"] div[data-testid="stHorizontalBlock"] > div[data-testid="column"]:nth-child(3) div[data-testid="stButton"] {
             display: flex !important;
-            justify-content: flex-start !important;
             width: 100% !important;
+        }
+        div[data-testid="stTabs"] div[data-testid="stButton"] > button {
+            width: 100% !important;
+        }
+
+        /* 9. 중요도 설정 등 일반 Selectbox 글자와 선택 상자 사이 간격 축소 */
+        div[data-testid="stSelectbox"] label {
+            margin-bottom: 2px !important;
+            padding-bottom: 0px !important;
+        }
+        div[data-testid="stSelectbox"] label p {
+            margin-bottom: 0px !important;
         }
         
         /* 서식 적용 화면의 계층별 들여쓰기 및 스타일 지정 */
@@ -247,6 +253,7 @@ if not st.session_state.show_detail:
     st.markdown("<h1>📚 금형기술사 기출문제 리스트</h1>", unsafe_allow_html=True)
     st.write("필터링된 문제 목록입니다. 목록에서 문제를 클릭하면 하단 선택 영역에 자동으로 반영됩니다.")
     
+    # 테이블 각 열의 가로폭 수치(픽셀 지정) 최적화
     event = st.dataframe(
         filtered_df[['회차', '교시', '분류', '문제', '조회수', '중요도(별)']], 
         use_container_width=True, 
@@ -254,12 +261,12 @@ if not st.session_state.show_detail:
         on_select="rerun",
         selection_mode="single-row",
         column_config={
-            "회차": st.column_config.Column("회차", width="small"),
-            "교시": st.column_config.Column("교시", width="small"),
-            "분류": st.column_config.Column("분류", width="medium"),
-            "문제": st.column_config.Column("문제", width="large"),
-            "조회수": st.column_config.Column("조회수", width="small"),
-            "중요도(별)": st.column_config.Column("중요도(별)", width="small")
+            "회차": st.column_config.Column("회차", width=60),
+            "교시": st.column_config.Column("교시", width=60),
+            "분류": st.column_config.Column("분류", width=110),
+            "문제": st.column_config.Column("문제", width=680),
+            "조회수": st.column_config.Column("조회수", width=70),
+            "중요도(별)": st.column_config.Column("중요도(별)", width=100)
         }
     )
     
@@ -296,7 +303,8 @@ else:
         st.session_state.current_q = None
         st.rerun()
 
-    col_prob, col_star = st.columns([80, 20])
+    # 문제 표시와 중요도 선택 영역 수평 정렬
+    col_prob, col_star = st.columns([82, 18], vertical_alignment="center")
 
     with col_prob:
         st.markdown(f"""
@@ -318,7 +326,7 @@ else:
             save_user_data(st.session_state.user_data)
             st.rerun()
 
-    tab1, tab2, tab3, tab4 = st.tabs(["📖 개념", "✅ 모범 답안", "📎 추가 자료 및 메모", "🔍 구글 검색"])
+    tab1, tab2, tab3, tab4 = st.tabs(["📖 답안 개념 설명", "✅ 모범 답안", "📎 추가 자료 및 메모", "🔍 구글 검색"])
 
     # TAB 1: 개념 설명
     with tab1:
@@ -327,20 +335,20 @@ else:
             st.session_state[key_hide_concept] = True
         is_concept_hidden = st.session_state[key_hide_concept]
 
-        # 버튼을 우측에 밀착 배치하기 위해 컬럼 비율을 [70, 16, 14]로 변경
-        col_t1, col_h1, col_b1 = st.columns([70, 16, 14], vertical_alignment="center")
+        # 동일한 버튼 사이즈 보장을 위한 컬럼 비율 [68, 16, 16] 및 container_width 사용
+        col_t1, col_h1, col_b1 = st.columns([68, 16, 16], vertical_alignment="center")
         with col_t1:
             st.markdown("### 1. 답안 개념 설명")
         with col_h1:
             toggle_label = "👁️ 입력창 보이기" if is_concept_hidden else "🙈 입력창 숨기기"
-            if st.button(toggle_label, key=f"btn_toggle_concept_{q_text}", use_container_width=False):
+            if st.button(toggle_label, key=f"btn_toggle_concept_{q_text}", use_container_width=True):
                 if f"concept_area_{q_text}" in st.session_state:
                     st.session_state.user_data[q_text]['concept'] = st.session_state[f"concept_area_{q_text}"]
                     save_user_data(st.session_state.user_data)
                 st.session_state[key_hide_concept] = not is_concept_hidden
                 st.rerun()
         with col_b1:
-            if st.button("💾 저장하기", key=f"save_concept_{q_text}", type="primary", use_container_width=False):
+            if st.button("💾 저장하기", key=f"save_concept_{q_text}", type="primary", use_container_width=True):
                 if f"concept_area_{q_text}" in st.session_state:
                     st.session_state.user_data[q_text]['concept'] = st.session_state[f"concept_area_{q_text}"]
                 save_user_data(st.session_state.user_data)
@@ -371,19 +379,19 @@ else:
             st.session_state[key_hide_answer] = True
         is_answer_hidden = st.session_state[key_hide_answer]
 
-        col_t2, col_h2, col_b2 = st.columns([70, 16, 14], vertical_alignment="center")
+        col_t2, col_h2, col_b2 = st.columns([68, 16, 16], vertical_alignment="center")
         with col_t2:
-            st.markdown("### 2. 모범 답안")
+            st.markdown("### 2. 실제 시험 모범 답안")
         with col_h2:
             toggle_label = "👁️ 입력창 보이기" if is_answer_hidden else "🙈 입력창 숨기기"
-            if st.button(toggle_label, key=f"btn_toggle_answer_{q_text}", use_container_width=False):
+            if st.button(toggle_label, key=f"btn_toggle_answer_{q_text}", use_container_width=True):
                 if f"answer_area_{q_text}" in st.session_state:
                     st.session_state.user_data[q_text]['answer'] = st.session_state[f"answer_area_{q_text}"]
                     save_user_data(st.session_state.user_data)
                 st.session_state[key_hide_answer] = not is_answer_hidden
                 st.rerun()
         with col_b2:
-            if st.button("💾 저장하기", key=f"save_answer_{q_text}", type="primary", use_container_width=False):
+            if st.button("💾 저장하기", key=f"save_answer_{q_text}", type="primary", use_container_width=True):
                 if f"answer_area_{q_text}" in st.session_state:
                     st.session_state.user_data[q_text]['answer'] = st.session_state[f"answer_area_{q_text}"]
                 save_user_data(st.session_state.user_data)
@@ -414,19 +422,19 @@ else:
             st.session_state[key_hide_extra] = True
         is_extra_hidden = st.session_state[key_hide_extra]
 
-        col_t3, col_h3, col_b3 = st.columns([70, 16, 14], vertical_alignment="center")
+        col_t3, col_h3, col_b3 = st.columns([68, 16, 16], vertical_alignment="center")
         with col_t3:
             st.markdown("### 3. 추가 자료 (메모, 링크, 참고사항)")
         with col_h3:
             toggle_label = "👁️ 입력창 보이기" if is_extra_hidden else "🙈 입력창 숨기기"
-            if st.button(toggle_label, key=f"btn_toggle_extra_{q_text}", use_container_width=False):
+            if st.button(toggle_label, key=f"btn_toggle_extra_{q_text}", use_container_width=True):
                 if f"extra_area_{q_text}" in st.session_state:
                     st.session_state.user_data[q_text]['extra'] = st.session_state[f"extra_area_{q_text}"]
                     save_user_data(st.session_state.user_data)
                 st.session_state[key_hide_extra] = not is_extra_hidden
                 st.rerun()
         with col_b3:
-            if st.button("💾 저장하기", key=f"save_extra_{q_text}", type="primary", use_container_width=False):
+            if st.button("💾 저장하기", key=f"save_extra_{q_text}", type="primary", use_container_width=True):
                 if f"extra_area_{q_text}" in st.session_state:
                     st.session_state.user_data[q_text]['extra'] = st.session_state[f"extra_area_{q_text}"]
                 save_user_data(st.session_state.user_data)
