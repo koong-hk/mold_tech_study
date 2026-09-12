@@ -38,10 +38,10 @@ st.markdown("""
             justify-content: center !important;
             align-items: center !important;
             text-align: center !important;
-            margin-top: 0px !important;
-            margin-bottom: 0px !important;
+            margin-top: 5px !important;
+            margin-bottom: 5px !important;
             width: auto !important; /* 글자 수에 맞추어 자동 조절 */
-            padding: 0px 0px !important;
+            padding: 5px 5px !important;
         }
 
         /* 5. 좌측 사이드바 필터 라벨 좌측 정렬 및 간격 축소 */
@@ -49,7 +49,7 @@ st.markdown("""
             text-align: left !important;
             justify-content: flex-start !important;
             margin-bottom: 2px !important;
-            padding-bottom: 0px !important;
+            padding-bottom: 2px !important;
         }
         div[data-testid="stSidebar"] div[data-testid="stSelectbox"] {
             margin-bottom: 0px !important;
@@ -57,7 +57,7 @@ st.markdown("""
         
         /* 요소 간 기본 세로 간격(gap) 축소 */
         div[data-testid="stVerticalBlock"] > div {
-            gap: 0.3rem !important;
+            gap: 0.5rem !important;
         }
         
         /* --------------------------------------------------------------------- */
@@ -144,12 +144,12 @@ def load_excel_data(uploaded_file):
             })
     return df
 
-uploaded_file = st.sidebar.file_uploader("기출문제 엑셀 파일 업로드", type=['xlsx', 'xls'])
+uploaded_file = st.sidebar.file_uploader("기출문제 엑셀 파일", type=['xlsx', 'xls'])
 df = load_excel_data(uploaded_file)
 
 # -----------------------------------------------------------------------------
 # 3. 데이터 전처리 및 학습 데이터 매핑
-# -----------------------------------------------------------------------------
+# ----------------------------------------------------------------------------
 for q in df['문제']:
     if q not in st.session_state.user_data:
         st.session_state.user_data[q] = {
@@ -241,9 +241,9 @@ else:
     with col_prob:
         # 6. 문제 배경 색상을 보다 어둡게 변경 (#2d3748 slate 색상 적용)
         st.markdown(f"""
-            <div style="background-color:#2d3748; padding: 10px 15px; border-radius: 8px; margin-top: 4px;">
-                <h3 style="color:#63b3ed; margin: 0px 0px 4px 0px; font-size: 90%; font-weight: bold; line-height: 1.3;">📝 {q_text}</h3>
-                <span style="color:#e2e8f0; font-size: 85%;">현재 조회수: {q_data['clicks']}회</span>
+            <div style="background-color:#2d3748; padding: 3px 3px; border-radius: 8px; margin-top: 3px;">
+                <h3 style="color:#63b3ed; margin: 0px 0px 5px 0px; font-size: 100%; font-weight: bold; line-height: 1.3;">📝 {q_text}</h3>
+                <span style="color:#e2e8f0; font-size: 90%;">현재 조회수: {q_data['clicks']}회</span>
             </div>
         """, unsafe_allow_html=True)
 
