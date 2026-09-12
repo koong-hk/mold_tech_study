@@ -209,9 +209,9 @@ else:
 
     with col_prob:
         st.markdown(f"""
-            <div style="background-color:#f0f2f6; padding: 10px 15px; border-radius: 8px; margin-top: 4px;">
-                <h3 style="color:#1f77b4; margin: 0px 0px 4px 0px; font-size: 95%; font-weight: bold; line-height: 1.3;">📝 {q_text}</h3>
-                <span style="color:#555; font-size: 75%;">현재 조회수: {q_data['clicks']}회</span>
+            <div style="background-color:#f0f2f6; padding: 5px 15px; border-radius: 8px; margin-top: 4px;">
+                <h3 style="color:#1f77b4; margin: 0px 0px 4px 0px; font-size: 90%; font-weight: bold; line-height: 1.3;">📝 {q_text}</h3>
+                <span style="color:#555; font-size: 90%;">현재 조회수: {q_data['clicks']}회</span>
             </div>
         """, unsafe_allow_html=True)
 
