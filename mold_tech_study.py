@@ -19,8 +19,8 @@ st.markdown("""
         /* 2. 제목 글자 크기 축소 (기본 H1 크기의 70% 수준) */
         div[data-testid="stMarkdownContainer"] h1 {
             font-size: 1.5rem !important;
-            margin-top: 0px !important;
-            margin-bottom: 0.5rem !important;
+            margin-top: 5px !important;
+            margin-bottom: 1.5rem !important;
         }
 
         /* 3. 좌측 파일 업로더 가로/세로 여백 조정 */
@@ -29,7 +29,7 @@ st.markdown("""
             padding: 0px !important;
         }
         div[data-testid="stFileUploader"] section {
-            padding: 5px 5px !important; /* 높이는 줄이고 좌우 여백은 동일하게 */
+            padding: 8px 8px !important; /* 높이는 줄이고 좌우 여백은 동일하게 */
         }
 
         /* 4. 모든 버튼 안쪽 글자 가운데 정렬 & 8. 가로 사이즈 글자수에 맞춤 */
@@ -41,7 +41,7 @@ st.markdown("""
             margin-top: 0px !important;
             margin-bottom: 0px !important;
             width: auto !important; /* 글자 수에 맞추어 자동 조절 */
-            padding: 4px 12px !important;
+            padding: 5px 5px !important;
         }
 
         /* 5. 좌측 사이드바 필터 라벨 좌측 정렬 및 간격 축소 */
