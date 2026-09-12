@@ -29,9 +29,9 @@ st.markdown("""
         /* 서식 적용 화면의 단락 첫 줄 들여쓰기 및 단락 구분 디자인 */
         /* --------------------------------------------------------------------- */
         div[data-testid="stMarkdownContainer"] p {
-            text-indent: 1.2em !important;     /* 문단 첫 줄 들여쓰기 */
-            line-height: 1.75 !important;      /* 줄간격 넓히기 */
-            margin-bottom: 1.0em !important;   /* 단락 사이 여백 명확화 */
+            text-indent: 1.5em !important;     /* 문단 첫 줄 들여쓰기 */
+            line-height: 1.90 !important;      /* 줄간격 넓히기 */
+            margin-bottom: 1.3em !important;   /* 단락 사이 여백 명확화 */
             word-break: keep-all !important;   /* 한글 단어 깨짐 방지 */
             font-size: 1.05rem !important;     /* 가독성을 위한 약간의 글자 크기 확대 */
         }
