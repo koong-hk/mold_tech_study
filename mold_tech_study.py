@@ -48,7 +48,7 @@ st.markdown("""
         div[data-testid="stSidebar"] label {
             text-align: left !important;
             justify-content: flex-start !important;
-            margin-bottom: 2px !important;
+            margin-bottom: 0px !important;
             padding-bottom: 2px !important;
         }
         div[data-testid="stSidebar"] div[data-testid="stSelectbox"] {
@@ -242,7 +242,7 @@ else:
         # 6. 문제 배경 색상을 보다 어둡게 변경 (#2d3748 slate 색상 적용)
         st.markdown(f"""
             <div style="background-color:#2d3748; padding: 3px 3px; border-radius: 8px; margin-top: 3px;">
-                <h3 style="color:#63b3ed; margin: 0px 0px 5px 0px; font-size: 100%; font-weight: bold; line-height: 1.3;">📝 {q_text}</h3>
+                <h3 style="color:#63b3ed; margin: 5px 5px 5px 5px; font-size: 100%; font-weight: bold; line-height: 1.3;">📝 {q_text}</h3>
                 <span style="color:#e2e8f0; font-size: 90%;">현재 조회수: {q_data['clicks']}회</span>
             </div>
         """, unsafe_allow_html=True)
@@ -277,7 +277,7 @@ else:
             st.markdown("### 1. 답안 개념 설명")
         with col_h1:
             # 7. 입력창 보이기 버튼 명칭 적용
-            toggle_label = "👁️ 입력창 보이기" if is_concept_hidden else "🙈 입력창 숨기기"
+            toggle_label = "입력창 보이기" if is_concept_hidden else "입력창 숨기기"
             if st.button(toggle_label, key=f"btn_toggle_concept_{q_text}", use_container_width=False):
                 if f"concept_area_{q_text}" in st.session_state:
                     st.session_state.user_data[q_text]['concept'] = st.session_state[f"concept_area_{q_text}"]
@@ -286,7 +286,7 @@ else:
                 st.rerun()
         with col_b1:
             # 8. 저장 버튼 자동 크기 맞춤
-            if st.button("💾 저장하기", key=f"save_concept_{q_text}", type="primary", use_container_width=False):
+            if st.button("저장하기", key=f"save_concept_{q_text}", type="primary", use_container_width=False):
                 if f"concept_area_{q_text}" in st.session_state:
                     st.session_state.user_data[q_text]['concept'] = st.session_state[f"concept_area_{q_text}"]
                 save_user_data(st.session_state.user_data)
