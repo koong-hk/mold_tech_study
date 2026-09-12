@@ -306,7 +306,7 @@ st.sidebar.header("🔍 문제 필터링")
 
 rounds = ["전체"] + sorted(list(df['회차'].unique()), reverse=True)
 
-# 교시 선택 옵션: 전체, 2~4교시 통합 옵션, 그리고 개별 교시
+# 교시 선택 옵션: 전체, 2~4교시 통합 옵션, 개별 교시
 unique_periods = sorted(list(df['교시'].unique()))
 periods = ["전체", "2~4교시"] + [str(p) for p in unique_periods]
 
@@ -423,8 +423,13 @@ else:
         "🖼️ 이미지 및 설명 자료"
     ])
 
+    # -------------------------------------------------------------------------
     # TAB 1: 개념 설명
+    # -------------------------------------------------------------------------
     with tab1:
+        st.markdown("### 1. 답안 개념 설명")
+        st.info("해당 문제에 필요한 이론적 배경, 핵심 메커니즘 및 요약 개념을 정리합니다.")
+        
         key_hide_concept = f"hide_concept_{q_text}"
         if key_hide_concept not in st.session_state:
             st.session_state[key_hide_concept] = True
@@ -432,7 +437,7 @@ else:
 
         col_t1, col_h1, col_b1 = st.columns([68, 16, 16], vertical_alignment="center")
         with col_t1:
-            st.markdown("### 1. 답안 개념 설명")
+            st.write("")
         with col_h1:
             toggle_label = "👁️ 입력창 보이기" if is_concept_hidden else "🙈 입력창 숨기기"
             if st.button(toggle_label, key=f"btn_toggle_concept_{q_text}", use_container_width=True):
@@ -450,7 +455,7 @@ else:
 
         if not is_concept_hidden:
             concept_text = st.text_area(
-                "개념을 정리하세요. (제미나이 답변 복사-붙여넣기 및 마크다운 지원)", 
+                "개념을 정리하세요. (마크다운 지원)", 
                 value=q_data['concept'], 
                 height=180, 
                 key=f"concept_area_{q_text}",
@@ -459,15 +464,22 @@ else:
             if q_data['concept']:
                 st.write("---")
                 st.markdown("#### 📖 개념 설명 (서식 적용 화면)")
-                st.markdown(format_readable_text(q_data['concept']))
+                with st.container(border=True):
+                    st.markdown(format_readable_text(q_data['concept']))
         else:
             if q_data['concept']:
-                st.markdown(format_readable_text(q_data['concept']))
+                with st.container(border=True):
+                    st.markdown(format_readable_text(q_data['concept']))
             else:
-                st.info("작성된 개념 설명이 없습니다. '입력창 보이기'를 눌러 내용을 입력해 보세요.")
+                st.caption("작성된 개념 설명이 없습니다. '입력창 보이기'를 눌러 내용을 입력해 보세요.")
 
+    # -------------------------------------------------------------------------
     # TAB 2: 모범 답안
+    # -------------------------------------------------------------------------
     with tab2:
+        st.markdown("### 2. 실제 시험 모범 답안")
+        st.info("실제 시험 채점 기준에 맞춰 개요, 본론, 결론 형식으로 서술형 답안을 작성합니다.")
+        
         key_hide_answer = f"hide_answer_{q_text}"
         if key_hide_answer not in st.session_state:
             st.session_state[key_hide_answer] = True
@@ -475,7 +487,7 @@ else:
 
         col_t2, col_h2, col_b2 = st.columns([68, 16, 16], vertical_alignment="center")
         with col_t2:
-            st.markdown("### 2. 실제 시험 모범 답안")
+            st.write("")
         with col_h2:
             toggle_label = "👁️ 입력창 보이기" if is_answer_hidden else "🙈 입력창 숨기기"
             if st.button(toggle_label, key=f"btn_toggle_answer_{q_text}", use_container_width=True):
@@ -493,7 +505,7 @@ else:
 
         if not is_answer_hidden:
             answer_text = st.text_area(
-                "시험 양식에 맞춘 모범 답안을 작성하세요. (제미나이 답변 복사-붙여넣기 및 마크다운 지원)", 
+                "시험 양식에 맞춘 모범 답안을 작성하세요. (마크다운 지원)", 
                 value=q_data['answer'], 
                 height=180, 
                 key=f"answer_area_{q_text}",
@@ -502,15 +514,22 @@ else:
             if q_data['answer']:
                 st.write("---")
                 st.markdown("#### 📄 모범 답안 (서식 적용 화면)")
-                st.markdown(format_readable_text(q_data['answer']))
+                with st.container(border=True):
+                    st.markdown(format_readable_text(q_data['answer']))
         else:
             if q_data['answer']:
-                st.markdown(format_readable_text(q_data['answer']))
+                with st.container(border=True):
+                    st.markdown(format_readable_text(q_data['answer']))
             else:
-                st.info("작성된 모범 답안이 없습니다. '입력창 보이기'를 눌러 내용을 입력해 보세요.")
+                st.caption("작성된 모범 답안이 없습니다. '입력창 보이기'를 눌러 내용을 입력해 보세요.")
 
+    # -------------------------------------------------------------------------
     # TAB 3: 추가 자료
+    # -------------------------------------------------------------------------
     with tab3:
+        st.markdown("### 3. 추가 자료 및 메모")
+        st.info("관련 수식, 외부 논문 출처, 참고 웹페이지 링크 및 개인적인 학습 메모를 작성합니다.")
+        
         key_hide_extra = f"hide_extra_{q_text}"
         if key_hide_extra not in st.session_state:
             st.session_state[key_hide_extra] = True
@@ -518,7 +537,7 @@ else:
 
         col_t3, col_h3, col_b3 = st.columns([68, 16, 16], vertical_alignment="center")
         with col_t3:
-            st.markdown("### 3. 추가 자료 (메모, 링크, 참고사항)")
+            st.write("")
         with col_h3:
             toggle_label = "👁️ 입력창 보이기" if is_extra_hidden else "🙈 입력창 숨기기"
             if st.button(toggle_label, key=f"btn_toggle_extra_{q_text}", use_container_width=True):
@@ -536,7 +555,7 @@ else:
 
         if not is_extra_hidden:
             extra_text = st.text_area(
-                "참고할 추가 메모나 링크를 입력하세요. (제미나이 답변 복사-붙여넣기 및 마크다운 지원)", 
+                "참고할 추가 메모나 링크를 입력하세요. (마크다운 지원)", 
                 value=q_data['extra'], 
                 height=180, 
                 key=f"extra_area_{q_text}",
@@ -545,18 +564,23 @@ else:
             if q_data['extra']:
                 st.write("---")
                 st.markdown("#### 📎 추가 자료 및 메모 (서식 적용 화면)")
-                st.markdown(format_readable_text(q_data['extra']))
+                with st.container(border=True):
+                    st.markdown(format_readable_text(q_data['extra']))
         else:
             if q_data['extra']:
-                st.markdown(format_readable_text(q_data['extra']))
+                with st.container(border=True):
+                    st.markdown(format_readable_text(q_data['extra']))
             else:
-                st.info("작성된 추가 자료가 없습니다. '입력창 보이기'를 눌러 내용을 입력해 보세요.")
+                st.caption("작성된 추가 자료가 없습니다. '입력창 보이기'를 눌러 내용을 입력해 보세요.")
 
+    # -------------------------------------------------------------------------
     # TAB 4: 구글 검색
+    # -------------------------------------------------------------------------
     with tab4:
         st.markdown("### 4. 구글 검색")
-        st.info("문제를 해결하기 위해 관련된 정보를 구글에서 검색해 보세요.")
-        search_query = st.text_input("검색어", value=q_text)
+        st.info("문제를 해결하기 위해 관련된 최신 technical자료 및 도면 정보를 구글에서 바로 검색합니다.")
+        
+        search_query = st.text_input("검색어 입력", value=q_text)
         
         if search_query:
             encoded_query = search_query.replace(" ", "+")
@@ -565,7 +589,7 @@ else:
             st.markdown(
                 f"""
                 <a href="{search_url}" target="_blank">
-                    <button style="background-color:#4285F4; color:white; border:none; padding:8px 16px; border-radius:5px; cursor:pointer; font-size:15px;">
+                    <button style="background-color:#4285F4; color:white; border:none; padding:8px 16px; border-radius:5px; cursor:pointer; font-size:15px; font-weight:bold;">
                         🌐 구글에서 검색 결과 보기 (새 창)
                     </button>
                 </a>
@@ -573,9 +597,12 @@ else:
                 unsafe_allow_html=True
             )
 
+    # -------------------------------------------------------------------------
     # TAB 5: 이미지 및 설명 자료
+    # -------------------------------------------------------------------------
     with tab5:
         st.markdown("### 5. 이미지 및 설명 자료")
+        st.info("금형 구조 도면, 3D CAD 캡처, 시뮬레이션 결과 이미지와 관련 설명을 함께 등록 및 확인할 수 있습니다.")
         
         # 1. 신규 이미지 업로드 및 설명 저장 영역
         with st.expander("➕ 새 이미지 및 설명 추가하기", expanded=False):
@@ -618,7 +645,7 @@ else:
         image_notes_list = q_data.get('image_notes', [])
 
         if not image_notes_list:
-            st.info("저장된 이미지 자료가 없습니다. 상단의 '➕ 새 이미지 및 설명 추가하기'를 눌러 자료를 등록해 보세요.")
+            st.caption("저장된 이미지 자료가 없습니다. 상단의 '➕ 새 이미지 및 설명 추가하기'를 눌러 자료를 등록해 보세요.")
         else:
             st.markdown("#### 🖼️ 저장된 이미지 목록")
             
@@ -647,7 +674,8 @@ else:
                 st.markdown("##### 📝 이미지 설명 내용")
                 note_content = selected_item.get('note', '')
                 if note_content:
-                    st.markdown(format_readable_text(note_content))
+                    with st.container(border=True):
+                        st.markdown(format_readable_text(note_content))
                 else:
                     st.caption("작성된 설명 내용이 없습니다.")
                 
