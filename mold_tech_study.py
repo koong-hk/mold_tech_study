@@ -32,19 +32,29 @@ st.markdown("""
             padding: 8px 8px !important; /* 높이는 줄이고 좌우 여백은 동일하게 */
         }
 
-        /* 4. 모든 버튼 안쪽 글자 가운데 정렬 & 8. 가로 사이즈 글자수에 맞춤 */
+        /* 4. 좌측 사이드바 전체 폭 90% 수준 축소 (수정사항 4) */
+        section[data-testid="stSidebar"] {
+            width: 280px !important;
+        }
+
+        /* 5. 버튼 글자 가운데 정렬 & 좌/우 균등 여백 수정 (수정사항 1) */
         div.stButton > button {
-            display: flex !important;
+            display: inline-flex !important;
             justify-content: center !important;
             align-items: center !important;
             text-align: center !important;
             margin-top: 5px !important;
             margin-bottom: 5px !important;
             width: auto !important; /* 글자 수에 맞추어 자동 조절 */
-            padding: 5px 5px !important;
+            padding: 6px 16px !important; /* 좌우 균등 여백 */
+        }
+        div.stButton > button p {
+            margin: 0 !important;
+            padding: 0 !important;
+            text-align: center !important;
         }
 
-        /* 5. 좌측 사이드바 필터 라벨 좌측 정렬 및 간격 축소 */
+        /* 6. 좌측 사이드바 필터 라벨 좌측 정렬 및 간격 축소 */
         div[data-testid="stSidebar"] label {
             text-align: left !important;
             justify-content: flex-start !important;
@@ -58,6 +68,11 @@ st.markdown("""
         /* 요소 간 기본 세로 간격(gap) 축소 */
         div[data-testid="stVerticalBlock"] > div {
             gap: 0.5rem !important;
+        }
+
+        /* 7. 상세 페이지 문제 박스와 하단 탭 사이 간격 확장 (수정사항 3) */
+        div[data-testid="stTabs"] {
+            margin-top: 1.5rem !important;
         }
         
         /* --------------------------------------------------------------------- */
@@ -149,7 +164,7 @@ df = load_excel_data(uploaded_file)
 
 # -----------------------------------------------------------------------------
 # 3. 데이터 전처리 및 학습 데이터 매핑
-# ----------------------------------------------------------------------------
+# -----------------------------------------------------------------------------
 for q in df['문제']:
     if q not in st.session_state.user_data:
         st.session_state.user_data[q] = {
@@ -187,17 +202,24 @@ if sort_by_clicks:
 # 5. 우측 화면 (리스트 뷰 vs 상세 뷰)
 # -----------------------------------------------------------------------------
 if not st.session_state.show_detail:
-    # 2. 제목 글자 크기를 줄인 상단 제목
     st.markdown("<h1>📚 금형기술사 기출문제 리스트</h1>", unsafe_allow_html=True)
     st.write("필터링된 문제 목록입니다. 목록에서 문제를 클릭하면 하단 선택 영역에 자동으로 반영됩니다.")
     
-    # 문제 리스트 출력
+    # 문제 리스트 출력 (수정사항 5: column_config로 컬럼 폭 개별 조절)
     event = st.dataframe(
         filtered_df[['회차', '교시', '분류', '문제', '조회수', '중요도(별)']], 
         use_container_width=True, 
         hide_index=True,
         on_select="rerun",
-        selection_mode="single-row"
+        selection_mode="single-row",
+        column_config={
+            "회차": st.column_config.Column("회차", width="small"),
+            "교시": st.column_config.Column("교시", width="small"),
+            "분류": st.column_config.Column("분류", width="medium"),
+            "문제": st.column_config.Column("문제", width="large"),
+            "조회수": st.column_config.Column("조회수", width="small"),
+            "중요도(별)": st.column_config.Column("중요도(별)", width="small")
+        }
     )
     
     q_options = list(filtered_df['문제'])
@@ -213,7 +235,6 @@ if not st.session_state.show_detail:
 
         selected_q = st.selectbox("학습할 문제 선택", options=q_options, key="sb_question")
         
-        # 8. 버튼 가로 크기 자동 맞춤 (use_container_width=False 적용)
         if st.button("✏️ 선택한 문제 학습하기", type="primary", use_container_width=False):
             st.session_state.user_data[selected_q]['clicks'] += 1
             save_user_data(st.session_state.user_data)
@@ -239,11 +260,11 @@ else:
     col_prob, col_star = st.columns([80, 20])
 
     with col_prob:
-        # 6. 문제 배경 색상을 보다 어둡게 변경 (#2d3748 slate 색상 적용)
+        # 문제 박스 여백 및 상하 높이 최적화 (수정사항 2)
         st.markdown(f"""
-            <div style="background-color:#2d3748; padding: 3px 3px; border-radius: 8px; margin-top: 3px;">
-                <h3 style="color:#63b3ed; margin: 5px 5px 5px 5px; font-size: 100%; font-weight: bold; line-height: 1.3;">📝 {q_text}</h3>
-                <span style="color:#e2e8f0; font-size: 90%;">현재 조회수: {q_data['clicks']}회</span>
+            <div style="background-color:#2d3748; padding: 8px 12px; border-radius: 8px; margin: 0px;">
+                <div style="color:#63b3ed; font-size: 1.05rem; font-weight: bold; line-height: 1.35; margin-bottom: 4px;">📝 {q_text}</div>
+                <span style="color:#e2e8f0; font-size: 0.85rem;">현재 조회수: {q_data['clicks']}회</span>
             </div>
         """, unsafe_allow_html=True)
 
@@ -259,7 +280,7 @@ else:
             save_user_data(st.session_state.user_data)
             st.rerun()
 
-    # 3. 하단 답안 영역 (4개 탭)
+    # 3. 하단 답안 영역 (4개 탭) - 수정사항 3(탭 상단 간격)이 적용되어 출력됨
     tab1, tab2, tab3, tab4 = st.tabs(["📖 답안 개념 설명", "✅ 모범 답안", "📎 추가 자료 및 메모", "🔍 구글 검색"])
 
     # -------------------------------------------------------------------------
@@ -267,7 +288,6 @@ else:
     # -------------------------------------------------------------------------
     with tab1:
         key_hide_concept = f"hide_concept_{q_text}"
-        # 7. 입력 창 숨김 상태를 디폴트(True)로 변경
         if key_hide_concept not in st.session_state:
             st.session_state[key_hide_concept] = True
         is_concept_hidden = st.session_state[key_hide_concept]
@@ -276,8 +296,7 @@ else:
         with col_t1:
             st.markdown("### 1. 답안 개념 설명")
         with col_h1:
-            # 7. 입력창 보이기 버튼 명칭 적용
-            toggle_label = "입력창 보이기" if is_concept_hidden else "입력창 숨기기"
+            toggle_label = "👁️ 입력창 보이기" if is_concept_hidden else "🙈 입력창 숨기기"
             if st.button(toggle_label, key=f"btn_toggle_concept_{q_text}", use_container_width=False):
                 if f"concept_area_{q_text}" in st.session_state:
                     st.session_state.user_data[q_text]['concept'] = st.session_state[f"concept_area_{q_text}"]
@@ -285,8 +304,7 @@ else:
                 st.session_state[key_hide_concept] = not is_concept_hidden
                 st.rerun()
         with col_b1:
-            # 8. 저장 버튼 자동 크기 맞춤
-            if st.button("저장하기", key=f"save_concept_{q_text}", type="primary", use_container_width=False):
+            if st.button("💾 저장하기", key=f"save_concept_{q_text}", type="primary", use_container_width=False):
                 if f"concept_area_{q_text}" in st.session_state:
                     st.session_state.user_data[q_text]['concept'] = st.session_state[f"concept_area_{q_text}"]
                 save_user_data(st.session_state.user_data)
@@ -315,7 +333,6 @@ else:
     # -------------------------------------------------------------------------
     with tab2:
         key_hide_answer = f"hide_answer_{q_text}"
-        # 7. 입력 창 숨김 상태를 디폴트(True)로 변경
         if key_hide_answer not in st.session_state:
             st.session_state[key_hide_answer] = True
         is_answer_hidden = st.session_state[key_hide_answer]
@@ -361,7 +378,6 @@ else:
     # -------------------------------------------------------------------------
     with tab3:
         key_hide_extra = f"hide_extra_{q_text}"
-        # 7. 입력 창 숨김 상태를 디폴트(True)로 변경
         if key_hide_extra not in st.session_state:
             st.session_state[key_hide_extra] = True
         is_extra_hidden = st.session_state[key_hide_extra]
