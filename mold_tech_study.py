@@ -305,7 +305,11 @@ df['중요도(별)'] = df['문제'].apply(lambda x: "⭐" * st.session_state.use
 st.sidebar.header("🔍 문제 필터링")
 
 rounds = ["전체"] + sorted(list(df['회차'].unique()), reverse=True)
-periods = ["전체"] + sorted(list(df['교시'].unique()))
+
+# 교시 선택 옵션: 전체, 2~4교시 통합 옵션, 그리고 개별 교시
+unique_periods = sorted(list(df['교시'].unique()))
+periods = ["전체", "2~4교시"] + [str(p) for p in unique_periods]
+
 categories = ["전체"] + sorted(list(df['분류'].unique()))
 
 sel_round = st.sidebar.selectbox("회차 선택", rounds)
@@ -315,9 +319,20 @@ sel_category = st.sidebar.selectbox("분류 선택", categories)
 sort_by_clicks = st.sidebar.checkbox("자주 본 문제 순으로 정렬 (조회수 ⇧)")
 
 filtered_df = df.copy()
-if sel_round != "전체": filtered_df = filtered_df[filtered_df['회차'] == sel_round]
-if sel_period != "전체": filtered_df = filtered_df[filtered_df['교시'] == sel_period]
-if sel_category != "전체": filtered_df = filtered_df[filtered_df['분류'] == sel_category]
+
+# 1) 회차 필터링
+if sel_round != "전체":
+    filtered_df = filtered_df[filtered_df['회차'] == sel_round]
+
+# 2) 교시 필터링 (2~4교시 통합 필터 적용)
+if sel_period == "2~4교시":
+    filtered_df = filtered_df[filtered_df['교시'].astype(str).isin(["2", "3", "4"])]
+elif sel_period != "전체":
+    filtered_df = filtered_df[filtered_df['교시'].astype(str) == str(sel_period)]
+
+# 3) 분류 필터링
+if sel_category != "전체":
+    filtered_df = filtered_df[filtered_df['분류'] == sel_category]
 
 if sort_by_clicks:
     filtered_df = filtered_df.sort_values(by='조회수', ascending=False)
@@ -558,7 +573,7 @@ else:
                 unsafe_allow_html=True
             )
 
-    # TAB 5: 이미지 및 설명 자료 (새로 추가)
+    # TAB 5: 이미지 및 설명 자료
     with tab5:
         st.markdown("### 5. 이미지 및 설명 자료")
         
@@ -578,7 +593,6 @@ else:
             
             if st.button("💾 이미지 및 설명 저장", key=f"btn_save_img_{q_text}", type="primary"):
                 if uploaded_img is not None:
-                    ext = os.path.splitext(uploaded_img.name)[1]
                     saved_filename = f"{int(time.time())}_{uploaded_img.name}"
                     file_path = os.path.join(IMAGE_DIR, saved_filename)
                     
@@ -620,10 +634,8 @@ else:
             selected_item = image_notes_list[selected_img_idx]
             
             st.write("")
-            # 6 : 4 비율 (좌: 이미지 60%, 우: 설명 내용 40%)
             col_img, col_text = st.columns([6, 4], gap="medium")
 
-            # 좌측 (비율 6): 이미지 영역
             with col_img:
                 st.markdown(f"##### 📷 {selected_item.get('caption', '이미지')}")
                 if os.path.exists(selected_item['file_path']):
@@ -631,7 +643,6 @@ else:
                 else:
                     st.error("저장된 이미지 파일을 찾을 수 없습니다.")
 
-            # 우측 (비율 4): 설명 내용 영역 (가독성 서식 적용)
             with col_text:
                 st.markdown("##### 📝 이미지 설명 내용")
                 note_content = selected_item.get('note', '')
