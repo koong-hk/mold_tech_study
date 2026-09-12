@@ -3,11 +3,16 @@ import pandas as pd
 import json
 import os
 import re
+import time
 
 # -----------------------------------------------------------------------------
 # 1. 페이지 설정 및 CSS 적용
 # -----------------------------------------------------------------------------
 st.set_page_config(page_title="금형기술사 학습 시스템", layout="wide")
+
+IMAGE_DIR = "saved_images"
+if not os.path.exists(IMAGE_DIR):
+    os.makedirs(IMAGE_DIR, exist_ok=True)
 
 st.markdown("""
     <style>
@@ -212,11 +217,7 @@ def save_user_data(data):
         json.dump(data, f, ensure_ascii=False, indent=4)
 
 def format_readable_text(text):
-    """
-    가독성 향상을 위한 마크다운 텍스트 자동 가공 함수
-    1. 마침표(.)로 끝나고 한 절/문장이 약 80% 이상(45자 이상) 채워진 경우 강제 줄바꿈(  \n) 삽입
-    2. 일반 문장 단락 분할 최적화
-    """
+    """가독성 향상을 위한 마크다운 텍스트 자동 가공 함수"""
     if not text:
         return ""
     
@@ -225,19 +226,16 @@ def format_readable_text(text):
     
     for line in lines:
         stripped = line.strip()
-        # 제목(#), 표(|), 코드블록(```), 구분선(---) 등 특수 서식은 기존 형태 유지
         if stripped.startswith(('#', '|', '```', '---')) or not stripped:
             formatted_lines.append(line)
             continue
         
-        # 마침표 기준으로 문장 구분 후 45자 이상(약 80% 너비)이면 줄바꿈 처리
         sentences = re.split(r'(?<=\.)\s+', line)
         if len(sentences) > 1:
             processed_line = ""
             curr_len = 0
             for idx, s in enumerate(sentences):
                 curr_len += len(s)
-                # 45자 이상이고 마침표로 끝나는 경우 다음 문장은 줄바꿈(마크다운  \n 적용)
                 if curr_len >= 45 and s.endswith('.'):
                     processed_line += s + "  \n"
                     curr_len = 0
@@ -292,8 +290,11 @@ for q in df['문제']:
     if q not in st.session_state.user_data:
         st.session_state.user_data[q] = {
             'clicks': 0, 'importance': 3, 
-            'concept': '', 'answer': '', 'extra': ''
+            'concept': '', 'answer': '', 'extra': '',
+            'image_notes': []
         }
+    elif 'image_notes' not in st.session_state.user_data[q]:
+        st.session_state.user_data[q]['image_notes'] = []
 
 df['조회수'] = df['문제'].apply(lambda x: st.session_state.user_data[x]['clicks'])
 df['중요도(별)'] = df['문제'].apply(lambda x: "⭐" * st.session_state.user_data[x]['importance'])
@@ -399,7 +400,13 @@ else:
             save_user_data(st.session_state.user_data)
             st.rerun()
 
-    tab1, tab2, tab3, tab4 = st.tabs(["📖 답안 개념 설명", "✅ 모범 답안", "📎 추가 자료 및 메모", "🔍 구글 검색"])
+    tab1, tab2, tab3, tab4, tab5 = st.tabs([
+        "📖 답안 개념 설명", 
+        "✅ 모범 답안", 
+        "📎 추가 자료 및 메모", 
+        "🔍 구글 검색", 
+        "🖼️ 이미지 및 설명 자료"
+    ])
 
     # TAB 1: 개념 설명
     with tab1:
@@ -487,7 +494,7 @@ else:
             else:
                 st.info("작성된 모범 답안이 없습니다. '입력창 보이기'를 눌러 내용을 입력해 보세요.")
 
-    # TAB 3: 추가 자료 (가독성 향상 적용)
+    # TAB 3: 추가 자료
     with tab3:
         key_hide_extra = f"hide_extra_{q_text}"
         if key_hide_extra not in st.session_state:
@@ -538,7 +545,7 @@ else:
         
         if search_query:
             encoded_query = search_query.replace(" ", "+")
-            search_url = f"https://www.google.com/search?q={encoded_query}"
+            search_url = f"[https://www.google.com/search?q=](https://www.google.com/search?q=){encoded_query}"
             
             st.markdown(
                 f"""
@@ -550,3 +557,97 @@ else:
                 """, 
                 unsafe_allow_html=True
             )
+
+    # TAB 5: 이미지 및 설명 자료 (새로 추가)
+    with tab5:
+        st.markdown("### 5. 이미지 및 설명 자료")
+        
+        # 1. 신규 이미지 업로드 및 설명 저장 영역
+        with st.expander("➕ 새 이미지 및 설명 추가하기", expanded=False):
+            uploaded_img = st.file_uploader(
+                "이미지 파일 업로드", 
+                type=["png", "jpg", "jpeg", "webp", "gif"], 
+                key=f"uploader_{q_text}"
+            )
+            img_caption = st.text_input("이미지 제목/캡션 (선택)", key=f"img_cap_{q_text}")
+            img_note = st.text_area(
+                "이미지 설명 내용 입력 (마크다운 서식 지원)", 
+                height=150, 
+                key=f"img_note_{q_text}"
+            )
+            
+            if st.button("💾 이미지 및 설명 저장", key=f"btn_save_img_{q_text}", type="primary"):
+                if uploaded_img is not None:
+                    ext = os.path.splitext(uploaded_img.name)[1]
+                    saved_filename = f"{int(time.time())}_{uploaded_img.name}"
+                    file_path = os.path.join(IMAGE_DIR, saved_filename)
+                    
+                    with open(file_path, "wb") as f:
+                        f.write(uploaded_img.getbuffer())
+                    
+                    new_image_item = {
+                        "file_path": file_path,
+                        "caption": img_caption if img_caption else uploaded_img.name,
+                        "note": img_note
+                    }
+                    
+                    st.session_state.user_data[q_text]['image_notes'].append(new_image_item)
+                    save_user_data(st.session_state.user_data)
+                    st.toast("이미지와 설명이 성공적으로 저장되었습니다!")
+                    st.rerun()
+                else:
+                    st.warning("업로드할 이미지 파일을 선택해 주세요.")
+
+        st.write("---")
+
+        # 2. 저장된 이미지 목록 및 6:4 상세 보기 영역
+        image_notes_list = q_data.get('image_notes', [])
+
+        if not image_notes_list:
+            st.info("저장된 이미지 자료가 없습니다. 상단의 '➕ 새 이미지 및 설명 추가하기'를 눌러 자료를 등록해 보세요.")
+        else:
+            st.markdown("#### 🖼️ 저장된 이미지 목록")
+            
+            options_label = [f"[{i+1}] {item.get('caption', '제목 없음')}" for i, item in enumerate(image_notes_list)]
+            
+            selected_img_idx = st.selectbox(
+                "저장된 이미지를 선택하세요",
+                options=range(len(image_notes_list)),
+                format_func=lambda i: options_label[i],
+                key=f"select_img_item_{q_text}"
+            )
+            
+            selected_item = image_notes_list[selected_img_idx]
+            
+            st.write("")
+            # 6 : 4 비율 (좌: 이미지 60%, 우: 설명 내용 40%)
+            col_img, col_text = st.columns([6, 4], gap="medium")
+
+            # 좌측 (비율 6): 이미지 영역
+            with col_img:
+                st.markdown(f"##### 📷 {selected_item.get('caption', '이미지')}")
+                if os.path.exists(selected_item['file_path']):
+                    st.image(selected_item['file_path'], use_container_width=True)
+                else:
+                    st.error("저장된 이미지 파일을 찾을 수 없습니다.")
+
+            # 우측 (비율 4): 설명 내용 영역 (가독성 서식 적용)
+            with col_text:
+                st.markdown("##### 📝 이미지 설명 내용")
+                note_content = selected_item.get('note', '')
+                if note_content:
+                    st.markdown(format_readable_text(note_content))
+                else:
+                    st.caption("작성된 설명 내용이 없습니다.")
+                
+                st.write("---")
+                if st.button("🗑️ 선택된 이미지 삭제", key=f"del_img_{selected_img_idx}_{q_text}"):
+                    if os.path.exists(selected_item['file_path']):
+                        try:
+                            os.remove(selected_item['file_path'])
+                        except Exception:
+                            pass
+                    st.session_state.user_data[q_text]['image_notes'].pop(selected_img_idx)
+                    save_user_data(st.session_state.user_data)
+                    st.toast("이미지 자료가 삭제되었습니다.")
+                    st.rerun()
