@@ -25,19 +25,20 @@ st.markdown("""
 
         /* 3. 좌측 파일 업로더 가로/세로 여백 조정 */
         div[data-testid="stFileUploader"] {
-            width: 80% !important;
+            width: 90% !important;
             padding: 0px !important;
+            margin-bottom: 0.5rem !important;
         }
         div[data-testid="stFileUploader"] section {
-            padding: 8px 8px !important; /* 높이는 줄이고 좌우 여백은 동일하게 */
+            padding: 6px 8px !important;
         }
 
-        /* 4. 좌측 사이드바 전체 폭 90% 수준 축소 (수정사항 4) */
+        /* 4. 좌측 사이드바 전체 폭 90% 수준 축소 (280px) */
         section[data-testid="stSidebar"] {
             width: 280px !important;
         }
 
-        /* 5. 버튼 글자 가운데 정렬 & 좌/우 균등 여백 수정 (수정사항 1) */
+        /* 5. 버튼 글자 가운데 정렬 & 좌/우 균등 여백 */
         div.stButton > button {
             display: inline-flex !important;
             justify-content: center !important;
@@ -45,8 +46,8 @@ st.markdown("""
             text-align: center !important;
             margin-top: 5px !important;
             margin-bottom: 5px !important;
-            width: auto !important; /* 글자 수에 맞추어 자동 조절 */
-            padding: 6px 16px !important; /* 좌우 균등 여백 */
+            width: auto !important;
+            padding: 6px 16px !important;
         }
         div.stButton > button p {
             margin: 0 !important;
@@ -54,30 +55,71 @@ st.markdown("""
             text-align: center !important;
         }
 
-        /* 6. 좌측 사이드바 필터 라벨 좌측 정렬 및 간격 축소 */
-        div[data-testid="stSidebar"] label {
+        /* 6. 사이드바 필터 정렬, 세로 간격 및 선택 박스 내부 간격 축소 */
+        section[data-testid="stSidebar"] div[data-testid="stVerticalBlock"] {
+            gap: 0.25rem !important;
+        }
+
+        section[data-testid="stSidebar"] label {
             text-align: left !important;
             justify-content: flex-start !important;
             margin-bottom: 0px !important;
-            padding-bottom: 2px !important;
+            padding-bottom: 0px !important;
+            padding-top: 0px !important;
         }
-        div[data-testid="stSidebar"] div[data-testid="stSelectbox"] {
-            margin-bottom: 0px !important;
-        }
-        
-        /* 요소 간 기본 세로 간격(gap) 축소 */
-        div[data-testid="stVerticalBlock"] > div {
-            gap: 0.5rem !important;
+        section[data-testid="stSidebar"] label p {
+            font-size: 0.88rem !important;
+            font-weight: 600 !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            text-align: left !important;
         }
 
-        /* 7. 상세 페이지 문제 박스와 하단 탭 사이 간격 확장 (수정사항 3) */
+        section[data-testid="stSidebar"] div[data-testid="stSelectbox"] {
+            margin-bottom: 6px !important;
+            margin-top: 0px !important;
+            padding: 0px !important;
+        }
+
+        section[data-testid="stSidebar"] div[data-baseweb="select"] > div {
+            min-height: 32px !important;
+            height: 32px !important;
+            padding-top: 0px !important;
+            padding-bottom: 0px !important;
+            padding-left: 8px !important;
+            padding-right: 8px !important;
+            display: flex !important;
+            align-items: center !important;
+        }
+
+        section[data-testid="stSidebar"] div[data-baseweb="select"] * {
+            font-size: 0.85rem !important;
+            line-height: 1.1 !important;
+        }
+
+        section[data-testid="stSidebar"] div[data-testid="stCheckbox"] {
+            margin-top: 4px !important;
+            margin-bottom: 4px !important;
+        }
+
+        /* 7. 상세 페이지 문제 박스와 하단 탭 사이 간격 확장 */
         div[data-testid="stTabs"] {
             margin-top: 1.5rem !important;
         }
+
+        /* 8. 탭 상단 우측 버튼 간격 최소화 및 우측 정렬 설정 */
+        div[data-testid="stTabs"] div[data-testid="stHorizontalBlock"] > div[data-testid="column"]:nth-child(2) div[data-testid="stButton"] {
+            display: flex !important;
+            justify-content: flex-end !important;
+            width: 100% !important;
+        }
+        div[data-testid="stTabs"] div[data-testid="stHorizontalBlock"] > div[data-testid="column"]:nth-child(3) div[data-testid="stButton"] {
+            display: flex !important;
+            justify-content: flex-start !important;
+            width: 100% !important;
+        }
         
-        /* --------------------------------------------------------------------- */
-        /* 서식 적용 화면의 계층별 들여쓰기 및 제목 간격 스타일 지정 */
-        /* --------------------------------------------------------------------- */
+        /* 서식 적용 화면의 계층별 들여쓰기 및 스타일 지정 */
         div[data-testid="stMarkdownContainer"] h2 {
             margin-top: 1.8em !important;
             margin-bottom: 0.8em !important;
@@ -90,14 +132,14 @@ st.markdown("""
         div[data-testid="stMarkdownContainer"] h3,
         div[data-testid="stMarkdownContainer"] h4,
         div[data-testid="stMarkdownContainer"] h5 {
-            margin-left: 1.5em !important;     /* 1탭 들여쓰기 */
+            margin-left: 1.5em !important;
             margin-top: 1.2em !important;
             margin-bottom: 0.5em !important;
             text-indent: 0px !important;
         }
         
         div[data-testid="stMarkdownContainer"] p {
-            margin-left: 3.0em !important;     /* 2탭 들여쓰기 */
+            margin-left: 3.0em !important;
             text-indent: 0px !important;
             line-height: 1.75 !important;
             margin-bottom: 0.8em !important;
@@ -107,7 +149,7 @@ st.markdown("""
         
         div[data-testid="stMarkdownContainer"] ul,
         div[data-testid="stMarkdownContainer"] ol {
-            margin-left: 3.0em !important;     /* 2탭 들여쓰기 */
+            margin-left: 3.0em !important;
             line-height: 1.75 !important;
             margin-bottom: 0.8em !important;
         }
@@ -205,7 +247,6 @@ if not st.session_state.show_detail:
     st.markdown("<h1>📚 금형기술사 기출문제 리스트</h1>", unsafe_allow_html=True)
     st.write("필터링된 문제 목록입니다. 목록에서 문제를 클릭하면 하단 선택 영역에 자동으로 반영됩니다.")
     
-    # 문제 리스트 출력 (수정사항 5: column_config로 컬럼 폭 개별 조절)
     event = st.dataframe(
         filtered_df[['회차', '교시', '분류', '문제', '조회수', '중요도(별)']], 
         use_container_width=True, 
@@ -250,17 +291,14 @@ else:
     q_text = st.session_state.current_q
     q_data = st.session_state.user_data[q_text]
     
-    # 1. 돌아가기 버튼
     if st.button("⬅️ 리스트로 돌아가기", use_container_width=False):
         st.session_state.show_detail = False
         st.session_state.current_q = None
         st.rerun()
 
-    # 2. 문제 상자 및 중요도 영역 (80% : 20%)
     col_prob, col_star = st.columns([80, 20])
 
     with col_prob:
-        # 문제 박스 여백 및 상하 높이 최적화 (수정사항 2)
         st.markdown(f"""
             <div style="background-color:#2d3748; padding: 8px 12px; border-radius: 8px; margin: 0px;">
                 <div style="color:#63b3ed; font-size: 1.05rem; font-weight: bold; line-height: 1.35; margin-bottom: 4px;">📝 {q_text}</div>
@@ -280,19 +318,17 @@ else:
             save_user_data(st.session_state.user_data)
             st.rerun()
 
-    # 3. 하단 답안 영역 (4개 탭) - 수정사항 3(탭 상단 간격)이 적용되어 출력됨
     tab1, tab2, tab3, tab4 = st.tabs(["📖 답안 개념 설명", "✅ 모범 답안", "📎 추가 자료 및 메모", "🔍 구글 검색"])
 
-    # -------------------------------------------------------------------------
     # TAB 1: 개념 설명
-    # -------------------------------------------------------------------------
     with tab1:
         key_hide_concept = f"hide_concept_{q_text}"
         if key_hide_concept not in st.session_state:
             st.session_state[key_hide_concept] = True
         is_concept_hidden = st.session_state[key_hide_concept]
 
-        col_t1, col_h1, col_b1 = st.columns([50, 25, 25], vertical_alignment="center")
+        # 버튼을 우측에 밀착 배치하기 위해 컬럼 비율을 [70, 16, 14]로 변경
+        col_t1, col_h1, col_b1 = st.columns([70, 16, 14], vertical_alignment="center")
         with col_t1:
             st.markdown("### 1. 답안 개념 설명")
         with col_h1:
@@ -328,16 +364,14 @@ else:
             else:
                 st.info("작성된 개념 설명이 없습니다. '입력창 보이기'를 눌러 내용을 입력해 보세요.")
 
-    # -------------------------------------------------------------------------
     # TAB 2: 모범 답안
-    # -------------------------------------------------------------------------
     with tab2:
         key_hide_answer = f"hide_answer_{q_text}"
         if key_hide_answer not in st.session_state:
             st.session_state[key_hide_answer] = True
         is_answer_hidden = st.session_state[key_hide_answer]
 
-        col_t2, col_h2, col_b2 = st.columns([50, 25, 25], vertical_alignment="center")
+        col_t2, col_h2, col_b2 = st.columns([70, 16, 14], vertical_alignment="center")
         with col_t2:
             st.markdown("### 2. 실제 시험 모범 답안")
         with col_h2:
@@ -373,16 +407,14 @@ else:
             else:
                 st.info("작성된 모범 답안이 없습니다. '입력창 보이기'를 눌러 내용을 입력해 보세요.")
 
-    # -------------------------------------------------------------------------
     # TAB 3: 추가 자료
-    # -------------------------------------------------------------------------
     with tab3:
         key_hide_extra = f"hide_extra_{q_text}"
         if key_hide_extra not in st.session_state:
             st.session_state[key_hide_extra] = True
         is_extra_hidden = st.session_state[key_hide_extra]
 
-        col_t3, col_h3, col_b3 = st.columns([50, 25, 25], vertical_alignment="center")
+        col_t3, col_h3, col_b3 = st.columns([70, 16, 14], vertical_alignment="center")
         with col_t3:
             st.markdown("### 3. 추가 자료 (메모, 링크, 참고사항)")
         with col_h3:
@@ -418,9 +450,7 @@ else:
             else:
                 st.info("작성된 추가 자료가 없습니다. '입력창 보이기'를 눌러 내용을 입력해 보세요.")
 
-    # -------------------------------------------------------------------------
     # TAB 4: 구글 검색
-    # -------------------------------------------------------------------------
     with tab4:
         st.markdown("### 4. 구글 검색")
         st.info("문제를 해결하기 위해 관련된 정보를 구글에서 검색해 보세요.")
