@@ -346,8 +346,49 @@ with st.sidebar:
 
     sort_by_clicks = st.checkbox("자주 본 문제 순 정렬 (조회수 ⇧)")
 
+    # -------------------------------------------------------------------------
+    # 4. 사이드바 하단: 이번 달 달력 & D-Day 영역
+    # -------------------------------------------------------------------------
+    st.markdown("---")
+    
+    # 이번 달 미니 달력 출력 (오늘 날짜 빨간색 원 표시)
+    st.markdown(render_mini_calendar(), unsafe_allow_html=True)
+
+    # D-Day 계산 로직
+    today_date = date.today()
+    if st.session_state.d_day_target:
+        target_dt = datetime.strptime(st.session_state.d_day_target, "%Y-%m-%d").date()
+        diff_days = (target_dt - today_date).days
+        if diff_days > 0:
+            d_day_str = f"D-{diff_days}"
+        elif diff_days == 0:
+            d_day_str = "D-Day"
+        else:
+            d_day_str = f"D+{abs(diff_days)}"
+    else:
+        d_day_str = "D-XX"
+
+    # 좌측 30% 설정 버튼 / 우측 70% D-Day 표시
+    col_d_btn, col_d_disp = st.columns([3, 7])
+    
+    with col_d_btn:
+        if st.button("D-Day", use_container_width=True, key="btn_set_dday"):
+            st.session_state.show_d_day_picker = not st.session_state.show_d_day_picker
+
+    with col_d_disp:
+        st.markdown(f"<div class='dday-box'>{d_day_str}</div>", unsafe_allow_html=True)
+
+    # D-Day 날짜 선택 창 (설정 버튼 클릭 시 토글)
+    if st.session_state.show_d_day_picker:
+        default_val = datetime.strptime(st.session_state.d_day_target, "%Y-%m-%d").date() if st.session_state.d_day_target else date.today()
+        selected_date = st.date_input("목표 시험일 선택", value=default_val, key="d_day_picker_input")
+        if st.button("확인 및 저장", use_container_width=True, key="btn_save_dday"):
+            st.session_state.d_day_target = selected_date.strftime("%Y-%m-%d")
+            st.session_state.show_d_day_picker = False
+            st.rerun()
+
 # -----------------------------------------------------------------------------
-# 4. 필터링 조건 적용
+# 5. 필터링 조건 적용
 # -----------------------------------------------------------------------------
 filtered_df = df.copy()
 
@@ -369,7 +410,7 @@ if sort_by_clicks:
     filtered_df = filtered_df.sort_values(by='조회수', ascending=False)
     
 # -----------------------------------------------------------------------------
-# 5. 우측 화면 (리스트 뷰 vs 상세 뷰 vs 학습노트)
+# 6. 우측 화면 (리스트 뷰 vs 상세 뷰 vs 학습노트)
 # -----------------------------------------------------------------------------
 # =============================================================================
 # [수정] main_mode 값에 따라 화면 분기 처리
