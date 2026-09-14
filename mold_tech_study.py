@@ -99,6 +99,11 @@ def render_mini_calendar():
     html += "</tbody></table></div>"
     return html
 
+def format_readable_text(text):
+    if not text or not str(text).strip():
+        return "*작성된 내용이 없습니다.*"
+    return str(text)
+
 # -----------------------------------------------------------------------------
 # 세션 상태 및 사용자 데이터 초기화
 # -----------------------------------------------------------------------------
@@ -117,6 +122,11 @@ if "d_day_target" not in st.session_state:
 
 if "show_d_day_picker" not in st.session_state:
     st.session_state.show_d_day_picker = False
+
+if 'concept' not in st.session_state.user_data[q]:
+    st.session_state.user_data[q]['concept'] = ''
+if 'answer' not in st.session_state.user_data[q]:
+    st.session_state.user_data[q]['answer'] = ''
 
 
 # -----------------------------------------------------------------------------
