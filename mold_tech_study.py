@@ -304,9 +304,12 @@ df['조회수'] = df['문제'].apply(lambda x: st.session_state.user_data[x]['cl
 df['중요도(별)'] = df['문제'].apply(lambda x: "⭐" * st.session_state.user_data[x]['importance'])
 
 # -----------------------------------------------------------------------------
-# 4. 좌측 화면 (사이드바 필터링 - 복수 선택 기능 적용)
+# 4. 좌측 화면 (사이드바 필터링 - 복수 선택 및 검색어 기능 추가)
 # -----------------------------------------------------------------------------
 st.sidebar.header("🔍 문제 필터링")
+
+# [추가] 키워드 검색어 입력창
+search_keyword = st.sidebar.text_input("🔍 문제 키워드 검색", placeholder="검색어를 입력하세요...")
 
 # 드롭다운 옵션 목록 생성
 rounds = sorted(list(df['회차'].unique()), reverse=True)
@@ -314,7 +317,7 @@ unique_periods = sorted(list(df['교시'].unique()))
 periods = [str(p) for p in unique_periods]
 categories = sorted(list(df['분류'].unique()))
 
-# selectbox -> multiselect 로 변경
+# selectbox -> multiselect
 sel_rounds = st.sidebar.multiselect("회차 선택 (복수)", options=rounds, default=[])
 sel_periods = st.sidebar.multiselect("교시 선택 (복수)", options=periods, default=[])
 sel_categories = st.sidebar.multiselect("분류 선택 (복수)", options=categories, default=[])
@@ -323,7 +326,14 @@ sort_by_clicks = st.sidebar.checkbox("자주 본 문제 순으로 정렬 (조회
 
 filtered_df = df.copy()
 
-# 1) 회차 복수 필터링 (선택 항목이 있을 경우에만 필터 적용)
+# 0) 키워드 검색어 필터링 (선택/입력 항목이 있을 경우)
+if search_keyword.strip():
+    # '문제' 컬럼에서 검색어가 포함된 행 필터링 (대소문자 무시, 결측치 무시)
+    filtered_df = filtered_df[
+        filtered_df['문제'].astype(str).str.contains(search_keyword.strip(), case=False, na=False)
+    ]
+
+# 1) 회차 복수 필터링
 if sel_rounds:
     filtered_df = filtered_df[filtered_df['회차'].isin(sel_rounds)]
 
@@ -335,6 +345,7 @@ if sel_periods:
 if sel_categories:
     filtered_df = filtered_df[filtered_df['분류'].isin(sel_categories)]
 
+# 4) 조회수 정렬
 if sort_by_clicks:
     filtered_df = filtered_df.sort_values(by='조회수', ascending=False)
     
