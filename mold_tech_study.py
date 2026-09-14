@@ -254,6 +254,10 @@ if "show_detail" not in st.session_state:
 if "current_q" not in st.session_state:
     st.session_state.current_q = None
 
+# user_data가 세션에 없거나, dict가 아니면 빈 딕셔너리로 초기화
+if "user_data" not in st.session_state or not isinstance(st.session_state.user_data, dict):
+    st.session_state.user_data = {}
+
 # -----------------------------------------------------------------------------
 # 2. 데이터 불러오기
 # -----------------------------------------------------------------------------
