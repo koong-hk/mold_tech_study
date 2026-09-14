@@ -31,45 +31,52 @@ def convert_image_to_base64(uploaded_file):
         return base64.b64encode(uploaded_file.getvalue()).decode()
     return None
 
-# 미니 달력 HTML 생성 함수
+# 커스텀 미니 달력 HTML 생성 함수 (블랙 테마 & 요일별 색상 적용)
 def render_mini_calendar():
     today = date.today()
     year, month, today_day = today.year, today.month, today.day
     cal = calendar.monthcalendar(year, month)
     
     html = f"""
-    <div style="text-align: center; font-weight: bold; font-size: 0.88rem; margin-top: 6px; margin-bottom: 4px; color: #333;">
-        📅 {year}년 {month}월
-    </div>
-    <table style="width: 100%; border-collapse: collapse; text-align: center; font-size: 0.78rem; margin-bottom: 6px;">
-        <thead>
-            <tr style="color: #777; font-weight: 600; border-bottom: 1px solid #ddd;">
-                <th style="color: #e63946; padding: 2px;">일</th>
-                <th style="padding: 2px;">월</th>
-                <th style="padding: 2px;">화</th>
-                <th style="padding: 2px;">수</th>
-                <th style="padding: 2px;">목</th>
-                <th style="padding: 2px;">금</th>
-                <th style="color: #457b9d; padding: 2px;">토</th>
-            </tr>
-        </thead>
-        <tbody>
+    <div style="background-color: #121212; border-radius: 8px; padding: 10px 8px; width: 100%; box-sizing: border-box; margin-bottom: 6px;">
+        <div style="text-align: center; font-weight: bold; font-size: 0.88rem; margin-bottom: 6px; color: #ffffff;">
+            📅 {year}년 {month}월
+        </div>
+        <table style="width: 100%; border-collapse: collapse; text-align: center; font-size: 0.78rem;">
+            <thead>
+                <tr style="font-weight: 600; border-bottom: 1px solid #333333;">
+                    <th style="color: #ff7979; padding: 3px 0;">일</th>
+                    <th style="color: #ffffff; padding: 3px 0;">월</th>
+                    <th style="color: #ffffff; padding: 3px 0;">화</th>
+                    <th style="color: #ffffff; padding: 3px 0;">수</th>
+                    <th style="color: #ffffff; padding: 3px 0;">목</th>
+                    <th style="color: #ffffff; padding: 3px 0;">금</th>
+                    <th style="color: #64b5f6; padding: 3px 0;">토</th>
+                </tr>
+            </thead>
+            <tbody>
     """
     for week in cal:
-        html += "<tr style='height: 22px;'>"
+        html += "<tr style='height: 24px;'>"
         for idx, day in enumerate(week):
             if day == 0:
                 html += "<td></td>"
             elif day == today_day:
-                html += f"<td><span style='background-color: #ff4b4b; color: white; border-radius: 50%; padding: 2px 5px; font-weight: bold; font-size: 0.75rem;'>{day}</span></td>"
+                # 오늘 날짜 하이라이트 (빨간 원형 배지)
+                html += f"<td><span style='background-color: #ff4b4b; color: #ffffff; border-radius: 50%; padding: 2px 6px; font-weight: bold; font-size: 0.75rem; display: inline-block; min-width: 18px;'>{day}</span></td>"
             else:
-                color_style = "color: #e63946;" if idx == 0 else ("color: #457b9d;" if idx == 6 else "color: #333;")
+                if idx == 0:     # 일요일: 연한 빨강
+                    color_style = "color: #ff7979;"
+                elif idx == 6:   # 토요일: 연한 파랑
+                    color_style = "color: #64b5f6;"
+                else:            # 평일: 흰색
+                    color_style = "color: #ffffff;"
                 html += f"<td style='{color_style}'>{day}</td>"
         html += "</tr>"
-    html += "</tbody></table>"
+    html += "</tbody></table></div>"
     return html
 
-# 세션 상태 초기화 (기본 모드: exam)
+# 세션 상태 초기화
 if "main_mode" not in st.session_state:
     st.session_state.main_mode = "exam"
 
@@ -107,7 +114,7 @@ st.markdown("""
             margin-bottom: 0.8rem !important;
         }
 
-        /* 3. 좌측 사이드바 폭 및 수직 수평 간격 대폭 축소 */
+        /* 3. 좌측 사이드바 폭 및 수직 수평 간격 축소 */
         section[data-testid="stSidebar"] {
             width: 280px !important;
         }
@@ -126,7 +133,7 @@ st.markdown("""
             margin-bottom: 0.3rem !important;
         }
 
-        /* 4. 파일 업로더 너비 100% 확대, 높이 단축 및 여백 최소화 */
+        /* 4. 파일 업로더 너비 100% 확대 */
         div[data-testid="stFileUploader"] {
             width: 100% !important;
             padding: 0px !important;
@@ -139,12 +146,7 @@ st.markdown("""
             width: 100% !important;
         }
 
-        div[data-testid="stFileUploader"] section[data-testid="stFileUploaderDropzone"] > div {
-            padding-top: 0px !important;
-            padding-bottom: 0px !important;
-        }
-
-        /* 5. 버튼 스타일 정의 */
+        /* 5. 사이드바 버튼 전체 100% 너비, 블랙 배경 & 흰색 글자 스타일 지정 */
         div.stButton > button {
             display: inline-flex !important;
             justify-content: center !important;
@@ -155,11 +157,22 @@ st.markdown("""
             padding: 4px 12px !important;
             min-height: 32px !important;
             height: 32px !important;
+            width: 100% !important;
         }
         
         section[data-testid="stSidebar"] div.stButton > button {
             width: 100% !important;
             font-size: 0.82rem !important;
+            background-color: #000000 !important;
+            color: #ffffff !important;
+            border: 1px solid #444444 !important;
+            transition: all 0.2s ease;
+        }
+
+        section[data-testid="stSidebar"] div.stButton > button:hover {
+            background-color: #222222 !important;
+            color: #ffffff !important;
+            border-color: #666666 !important;
         }
 
         div.stButton > button p {
@@ -167,6 +180,7 @@ st.markdown("""
             padding: 0 !important;
             text-align: center !important;
             font-size: 0.82rem !important;
+            color: #ffffff !important;
         }
 
         /* 6. 사이드바 필터 라벨 및 드롭다운 밀도 조정 */
@@ -174,8 +188,7 @@ st.markdown("""
             text-align: left !important;
             justify-content: flex-start !important;
             margin-bottom: 0px !important;
-            padding-bottom: 0px !important;
-            padding-top: 0px !important;
+            padding: 0px !important;
         }
         
         section[data-testid="stSidebar"] label p {
@@ -183,7 +196,6 @@ st.markdown("""
             font-weight: 600 !important;
             margin: 0 !important;
             padding: 0 !important;
-            text-align: left !important;
         }
 
         section[data-testid="stSidebar"] div[data-testid="stSelectbox"],
@@ -196,10 +208,7 @@ st.markdown("""
 
         section[data-testid="stSidebar"] div[data-baseweb="select"] > div {
             min-height: 32px !important;
-            padding-top: 0px !important;
-            padding-bottom: 0px !important;
-            padding-left: 6px !important;
-            padding-right: 6px !important;
+            padding: 0px 6px !important;
             display: flex !important;
             align-items: center !important;
         }
@@ -209,21 +218,19 @@ st.markdown("""
             line-height: 1.1 !important;
         }
 
-        section[data-testid="stSidebar"] div[data-testid="stCheckbox"] {
-            margin-top: 2px !important;
-            margin-bottom: 2px !important;
-        }
-
-        /* D-Day 표시 박스 커스텀 */
+        /* 7. D-Day 표시 박스 커스텀 (블랙 배경 & 흰색 글자) */
         .dday-box {
-            background-color: #ff4b4b;
-            color: white;
+            background-color: #000000;
+            color: #ffffff;
             font-weight: bold;
-            font-size: 1.05rem;
-            line-height: 32px;
+            font-size: 0.92rem;
+            line-height: 30px;
             text-align: center;
-            border-radius: 6px;
+            border-radius: 4px;
             height: 32px;
+            border: 1px solid #444444;
+            width: 100%;
+            box-sizing: border-box;
         }
     </style>
 """, unsafe_allow_html=True)
@@ -329,11 +336,11 @@ with st.sidebar:
     sort_by_clicks = st.checkbox("자주 본 문제 순 정렬 (조회수 ⇧)")
 
     # -------------------------------------------------------------------------
-    # 4. 사이드바 하단: 이번 달 달력 & D-Day 영역
+    # 4. 사이드바 하단: 블랙 테마 미니 달력 & D-Day 영역
     # -------------------------------------------------------------------------
     st.markdown("---")
     
-    # 이번 달 미니 달력 출력 (오늘 날짜 빨간색 원 표시)
+    # 블랙 배경 미니 달력 출력
     st.markdown(render_mini_calendar(), unsafe_allow_html=True)
 
     # D-Day 계산 로직
@@ -360,7 +367,7 @@ with st.sidebar:
     with col_d_disp:
         st.markdown(f"<div class='dday-box'>{d_day_str}</div>", unsafe_allow_html=True)
 
-    # D-Day 날짜 선택 창 (설정 버튼 클릭 시 토글)
+    # D-Day 날짜 선택 피커 (버튼 클릭 시 표시)
     if st.session_state.show_d_day_picker:
         default_val = datetime.strptime(st.session_state.d_day_target, "%Y-%m-%d").date() if st.session_state.d_day_target else date.today()
         selected_date = st.date_input("목표 시험일 선택", value=default_val, key="d_day_picker_input")
@@ -391,28 +398,6 @@ if sel_categories:
 if sort_by_clicks:
     filtered_df = filtered_df.sort_values(by='조회수', ascending=False)
 
-# -----------------------------------------------------------------------------
-# 5. 필터링 조건 적용
-# -----------------------------------------------------------------------------
-filtered_df = df.copy()
-
-if search_keyword.strip():
-    filtered_df = filtered_df[
-        filtered_df['문제'].astype(str).str.contains(search_keyword.strip(), case=False, na=False)
-    ]
-
-if sel_rounds:
-    filtered_df = filtered_df[filtered_df['회차'].isin(sel_rounds)]
-
-if sel_periods:
-    filtered_df = filtered_df[filtered_df['교시'].astype(str).isin(sel_periods)]
-
-if sel_categories:
-    filtered_df = filtered_df[filtered_df['분류'].isin(sel_categories)]
-
-if sort_by_clicks:
-    filtered_df = filtered_df.sort_values(by='조회수', ascending=False)
-    
 # -----------------------------------------------------------------------------
 # 6. 우측 화면 (리스트 뷰 vs 상세 뷰 vs 학습노트)
 # -----------------------------------------------------------------------------
