@@ -352,10 +352,14 @@ if sort_by_clicks:
 # -----------------------------------------------------------------------------
 # 5. 우측 화면 (리스트 뷰 vs 상세 뷰)
 # -----------------------------------------------------------------------------
+# -----------------------------------------------------------------------------
+# 5. 우측 화면 (리스트 뷰 vs 상세 뷰)
+# -----------------------------------------------------------------------------
 if not st.session_state.show_detail:
     st.markdown("<h1>📚 금형기술사 기출문제 리스트</h1>", unsafe_allow_html=True)
-    st.write("필터링된 문제 목록입니다. 목록에서 문제를 클릭하면 하단 선택 영역에 자동으로 반영됩니다.")
+    st.write("필터링된 문제 목록입니다. 목록에서 문제를 선택한 후 하단 버튼을 클릭하면 상세 학습 화면으로 이동합니다.")
     
+    # 문제 목록 데이터프레임 출력
     event = st.dataframe(
         filtered_df[['회차', '교시', '분류', '문제', '조회수', '중요도(별)']], 
         use_container_width=True, 
@@ -374,6 +378,7 @@ if not st.session_state.show_detail:
     
     q_options = list(filtered_df['문제'])
     if q_options:
+        # 표에서 클릭한 행을 아래 셀렉트박스 선택값과 연동
         selected_rows = event.selection.get("rows", [])
         if selected_rows:
             row_idx = selected_rows[0]
@@ -385,6 +390,7 @@ if not st.session_state.show_detail:
 
         selected_q = st.selectbox("학습할 문제 선택", options=q_options, key="sb_question")
         
+        # [핵심] 버튼 클릭 시 조회수 1 증가 + 저장 + 상세 페이지(Tab 1~5)로 이동
         if st.button("✏️ 선택한 문제 학습하기", type="primary", use_container_width=False):
             st.session_state.user_data[selected_q]['clicks'] += 1
             save_user_data(st.session_state.user_data)
@@ -393,7 +399,7 @@ if not st.session_state.show_detail:
             st.session_state.show_detail = True
             st.rerun()
     else:
-        st.warning("조건에 해당하는 문제가 없습니다.")
+        st.warning("조건에 해당하는 문제가 없습니다. 좌측 사이드바 필터를 변경해 보세요.")
 
 else:
     # --- 상세 학습 뷰 ---
