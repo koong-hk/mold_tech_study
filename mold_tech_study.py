@@ -1,692 +1,444 @@
 import streamlit as st
-import pandas as pd
 import json
 import os
-import re
-import time
+from datetime import datetime
+import base64
 
-# -----------------------------------------------------------------------------
-# 1. 페이지 설정 및 CSS 적용
-# -----------------------------------------------------------------------------
-st.set_page_config(page_title="금형기술사 학습 시스템", layout="wide")
-
-IMAGE_DIR = "saved_images"
-if not os.path.exists(IMAGE_DIR):
-    os.makedirs(IMAGE_DIR, exist_ok=True)
+# ==========================================
+# 1. 페이지 설정 및 Custom CSS
+# ==========================================
+st.set_page_config(
+    page_title="금형기술사 학습 시스템",
+    page_icon="📘",
+    layout="wide",
+    initial_sidebar_state="expanded"
+)
 
 st.markdown("""
-    <style>
-        /* 1. 메인 영역 상단 여백 최소화 */
-        .block-container {
-            padding-top: 3.0rem !important;
-            padding-bottom: 1.5rem !important;
-        }
-        
-        /* 2. 제목 글자 크기 축소 */
-        div[data-testid="stMarkdownContainer"] h1 {
-            font-size: 1.5rem !important;
-            margin-top: 5px !important;
-            margin-bottom: 1.5rem !important;
-        }
+<style>
+    /* 사이드바 스타일 및 너비 고정 */
+    [data-testid="stSidebar"] {
+        min-width: 290px;
+        max-width: 290px;
+        background-color: #f8f9fa;
+        border-right: 1px solid #e9ecef;
+    }
+    
+    /* 카드 및 컨테이너 스타일 */
+    .st-card {
+        background-color: #ffffff;
+        padding: 20px;
+        border-radius: 10px;
+        border: 1px solid #e0e0e0;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        margin-bottom: 15px;
+    }
+    
+    /* 배지 스타일 */
+    .badge-category {
+        background-color: #e7f5ff;
+        color: #1971c2;
+        padding: 4px 8px;
+        border-radius: 4px;
+        font-size: 12px;
+        font-weight: bold;
+    }
+    .badge-keyword {
+        background-color: #f1f3f5;
+        color: #495057;
+        padding: 3px 8px;
+        border-radius: 12px;
+        font-size: 11px;
+        margin-right: 4px;
+        display: inline-block;
+    }
+    .text-date {
+        color: #868e96;
+        font-size: 12px;
+    }
 
-        /* 3. 좌측 파일 업로더 가로/세로 여백 조정 */
-        div[data-testid="stFileUploader"] {
-            width: 90% !important;
-            padding: 0px !important;
-            margin-bottom: 0.5rem !important;
-        }
-        div[data-testid="stFileUploader"] section {
-            padding: 6px 8px !important;
-        }
-
-        /* 4. 좌측 사이드바 전체 폭 (280px) */
-        section[data-testid="stSidebar"] {
-            width: 280px !important;
-        }
-
-        /* 5. 기본 버튼 서식 */
-        div.stButton > button {
-            display: inline-flex !important;
-            justify-content: center !important;
-            align-items: center !important;
-            text-align: center !important;
-            margin-top: 5px !important;
-            margin-bottom: 5px !important;
-            padding: 6px 16px !important;
-        }
-        div.stButton > button p {
-            margin: 0 !important;
-            padding: 0 !important;
-            text-align: center !important;
-        }
-
-        /* 6. 사이드바 필터 간격 축소 */
-        section[data-testid="stSidebar"] div[data-testid="stVerticalBlock"] {
-            gap: 0.25rem !important;
-        }
-
-        section[data-testid="stSidebar"] label {
-            text-align: left !important;
-            justify-content: flex-start !important;
-            margin-bottom: 0px !important;
-            padding-bottom: 0px !important;
-            padding-top: 0px !important;
-        }
-        section[data-testid="stSidebar"] label p {
-            font-size: 0.88rem !important;
-            font-weight: 600 !important;
-            margin: 0 !important;
-            padding: 0 !important;
-            text-align: left !important;
-        }
-
-        section[data-testid="stSidebar"] div[data-testid="stSelectbox"] {
-            margin-bottom: 6px !important;
-            margin-top: 0px !important;
-            padding: 0px !important;
-        }
-
-        section[data-testid="stSidebar"] div[data-baseweb="select"] > div {
-            min-height: 32px !important;
-            height: 32px !important;
-            padding-top: 0px !important;
-            padding-bottom: 0px !important;
-            padding-left: 8px !important;
-            padding-right: 8px !important;
-            display: flex !important;
-            align-items: center !important;
-        }
-
-        section[data-testid="stSidebar"] div[data-baseweb="select"] * {
-            font-size: 0.85rem !important;
-            line-height: 1.1 !important;
-        }
-
-        section[data-testid="stSidebar"] div[data-testid="stCheckbox"] {
-            margin-top: 4px !important;
-            margin-bottom: 4px !important;
-        }
-
-        /* 7. 상세 페이지 문제 박스와 하단 탭 사이 간격 */
-        div[data-testid="stTabs"] {
-            margin-top: 1.5rem !important;
-        }
-
-        /* 8. 탭 상단 우측 버튼 동일 사이즈 및 우측 밀착 정렬 */
-        div[data-testid="stTabs"] div[data-testid="stHorizontalBlock"] > div[data-testid="column"]:nth-child(2) div[data-testid="stButton"],
-        div[data-testid="stTabs"] div[data-testid="stHorizontalBlock"] > div[data-testid="column"]:nth-child(3) div[data-testid="stButton"] {
-            display: flex !important;
-            width: 100% !important;
-        }
-        div[data-testid="stTabs"] div[data-testid="stButton"] > button {
-            width: 100% !important;
-        }
-
-        /* 9. 중요도 설정 등 일반 Selectbox 라벨 여백 축소 */
-        div[data-testid="stSelectbox"] label {
-            margin-bottom: 2px !important;
-            padding-bottom: 0px !important;
-        }
-        div[data-testid="stSelectbox"] label p {
-            margin-bottom: 0px !important;
-        }
-        
-        /* 10. 마크다운 서식 적용 화면 가독성 및 계층별 들여쓰기/번호 스타일링 */
-        div[data-testid="stMarkdownContainer"] p {
-            line-height: 1.85 !important;
-            margin-bottom: 0.9em !important;
-            word-break: keep-all !important;
-            font-size: 1.02rem !important;
-        }
-
-        /* 1계층 순서 있는 목록 (1. 2. 3.) */
-        div[data-testid="stMarkdownContainer"] ol {
-            list-style-type: decimal !important;
-            margin-left: 1.8em !important;
-            padding-left: 0.2em !important;
-            margin-bottom: 0.8em !important;
-        }
-        /* 2계층 순서 있는 목록 (A. B. C.) */
-        div[data-testid="stMarkdownContainer"] ol ol {
-            list-style-type: upper-alpha !important;
-            margin-left: 1.6em !important;
-            margin-top: 0.3em !important;
-            margin-bottom: 0.5em !important;
-        }
-        /* 3계층 순서 있는 목록 (a. b. c.) */
-        div[data-testid="stMarkdownContainer"] ol ol ol {
-            list-style-type: lower-alpha !important;
-            margin-left: 1.6em !important;
-        }
-
-        /* 1계층 순서 없는 목록 (● 채운 원) */
-        div[data-testid="stMarkdownContainer"] ul {
-            list-style-type: disc !important;
-            margin-left: 1.8em !important;
-            padding-left: 0.2em !important;
-            margin-bottom: 0.8em !important;
-        }
-        /* 2계층 순서 없는 목록 (○ 빈 원) */
-        div[data-testid="stMarkdownContainer"] ul ul {
-            list-style-type: circle !important;
-            margin-left: 1.6em !important;
-            margin-top: 0.3em !important;
-            margin-bottom: 0.5em !important;
-        }
-        /* 3계층 순서 없는 목록 (■ 사각형) */
-        div[data-testid="stMarkdownContainer"] ul ul ul {
-            list-style-type: square !important;
-            margin-left: 1.6em !important;
-        }
-
-        /* 리스트 항목 높이 및 여백 */
-        div[data-testid="stMarkdownContainer"] li {
-            line-height: 1.8 !important;
-            margin-bottom: 0.4em !important;
-            word-break: keep-all !important;
-        }
-        
-        /* 제목 스타일링 */
-        div[data-testid="stMarkdownContainer"] h2 {
-            margin-top: 1.6em !important;
-            margin-bottom: 0.7em !important;
-            border-bottom: 1px solid #4a5568;
-            padding-bottom: 0.3em;
-        }
-        div[data-testid="stMarkdownContainer"] h3 {
-            margin-top: 1.3em !important;
-            margin-bottom: 0.5em !important;
-        }
-        div[data-testid="stMarkdownContainer"] h4 {
-            margin-top: 1.0em !important;
-            margin-bottom: 0.4em !important;
-        }
-    </style>
+    /* 가독성 향상 마크다운 스타일 */
+    .readable-content p {
+        line-height: 1.7;
+        margin-bottom: 1rem;
+    }
+    
+    /* 버튼 커스텀 */
+    .stButton>button {
+        width: 100%;
+        border-radius: 6px;
+    }
+</style>
 """, unsafe_allow_html=True)
 
-USER_DATA_FILE = "user_study_data.json"
+# ==========================================
+# 2. 데이터 파일 제어 및 세션 상태 초기화
+# ==========================================
+QUESTION_DATA_FILE = "user_study_data.json"
+NOTE_DATA_FILE = "user_notes_data.json"
 
-def load_user_data():
-    if os.path.exists(USER_DATA_FILE):
-        with open(USER_DATA_FILE, 'r', encoding='utf-8') as f:
-            return json.load(f)
-    return {}
+# 샘플 기출문제 데이터 (기본값)
+DEFAULT_QUESTIONS = [
+    {
+        "id": "1",
+        "round": "128회",
+        "period": "1교시",
+        "category": "사출금형",
+        "title": "사출성형기 변수 중 사출압력과 보압의 역할 및 차이점에 대하여 설명하시오.",
+        "views": 15,
+        "rating": 5
+    },
+    {
+        "id": "2",
+        "round": "128회",
+        "period": "2교시",
+        "category": "프레스금형",
+        "title": "프로그레시브 금형에서 사이드 컷(Side Cut)의 설치 목적과 사용 시 주의사항을 설명하시오.",
+        "views": 8,
+        "rating": 4
+    },
+    {
+        "id": "3",
+        "round": "129회",
+        "period": "1교시",
+        "category": "재료/열처리",
+        "title": "STAVAX(SUS420J2 계열) 몰드강의 열처리 특성 및 래핑(Lapping) 작업 시 발생할 수 있는 결함에 대해 설명하시오.",
+        "views": 22,
+        "rating": 5
+    }
+]
 
-def save_user_data(data):
-    with open(USER_DATA_FILE, 'w', encoding='utf-8') as f:
-        json.dump(data, f, ensure_ascii=False, indent=4)
+def load_data(file_path, default):
+    if os.path.exists(file_path):
+        try:
+            with open(file_path, "r", encoding="utf-8") as f:
+                return json.load(f)
+        except Exception:
+            return default
+    return default
 
-def format_readable_text(text):
-    """가독성 향상을 위한 마크다운 텍스트 자동 가공 함수"""
-    if not text:
-        return ""
-    
-    lines = text.splitlines()
-    formatted_lines = []
-    
-    for line in lines:
-        stripped = line.strip()
-        if stripped.startswith(('#', '|', '```', '---')) or not stripped:
-            formatted_lines.append(line)
-            continue
-        
-        sentences = re.split(r'(?<=\.)\s+', line)
-        if len(sentences) > 1:
-            processed_line = ""
-            curr_len = 0
-            for idx, s in enumerate(sentences):
-                curr_len += len(s)
-                if curr_len >= 45 and s.endswith('.'):
-                    processed_line += s + "  \n"
-                    curr_len = 0
-                else:
-                    processed_line += s + (" " if idx < len(sentences) - 1 else "")
-            formatted_lines.append(processed_line)
-        else:
-            formatted_lines.append(line)
-            
-    return "\n".join(formatted_lines)
+def save_data(file_path, data):
+    with open(file_path, "w", encoding="utf-8") as f:
+        json.dump(data, f, ensure_ascii=False, indent=2)
 
-if "user_data" not in st.session_state:
-    st.session_state.user_data = load_user_data()
-if "show_detail" not in st.session_state:
-    st.session_state.show_detail = False
-if "current_q" not in st.session_state:
-    st.session_state.current_q = None
-
-# -----------------------------------------------------------------------------
-# 2. 데이터 불러오기
-# -----------------------------------------------------------------------------
-@st.cache_data
-def load_excel_data(uploaded_file):
+# 이미지 업로드를 Base64 코드로 변환
+def image_to_base64(uploaded_file):
     if uploaded_file is not None:
-        df = pd.read_excel(uploaded_file)
-    else:
-        default_file = "금형기술사_기출문제 통합.xlsx"
-        if os.path.exists(default_file):
-            df = pd.read_excel(default_file)
-        else:
-            df = pd.DataFrame({
-                '회차': [139, 139, 138, 138, 137],
-                '교시': [1, 2, 1, 3, 4],
-                '분류': ['프레스금형', '사출금형', '공통', '프레스금형', '사출금형'],
-                '문제': [
-                    '프로그레시브 금형에서 파일럿 핀의 역할과 종류를 설명하시오.',
-                    '사출금형에서 2단 밀판(Ejector Plate) 구조와 작동 원리를 설명하시오.',
-                    '금형 재료로 사용되는 고속도공구강(M42)의 특성을 설명하시오.',
-                    '드로잉 가공 시 발생하는 결함의 종류와 대책을 설명하시오.',
-                    '플라스틱 수지(PC, PA)의 유동 특성과 금형 설계 시 주의사항을 설명하시오.'
-                ]
-            })
-    return df
+        bytes_data = uploaded_file.getvalue()
+        base64_str = base64.b64encode(bytes_data).decode()
+        return f"data:{uploaded_file.type};base64,{base64_str}"
+    return None
 
-uploaded_file = st.sidebar.file_uploader("기출문제 엑셀 파일", type=['xlsx', 'xls'])
-df = load_excel_data(uploaded_file)
+# 세션 관리
+if "view_mode" not in st.session_state:
+    st.session_state["view_mode"] = "기출문제"  # 디폴트: 기출문제
 
-# -----------------------------------------------------------------------------
-# 3. 데이터 전처리 및 학습 데이터 매핑
-# -----------------------------------------------------------------------------
-for q in df['문제']:
-    if q not in st.session_state.user_data:
-        st.session_state.user_data[q] = {
-            'clicks': 0, 'importance': 3, 
-            'concept': '', 'answer': '', 'extra': '',
-            'image_notes': []
-        }
-    elif 'image_notes' not in st.session_state.user_data[q]:
-        st.session_state.user_data[q]['image_notes'] = []
+if "questions" not in st.session_state:
+    st.session_state["questions"] = load_data(QUESTION_DATA_FILE, DEFAULT_QUESTIONS)
 
-df['조회수'] = df['문제'].apply(lambda x: st.session_state.user_data[x]['clicks'])
-df['중요도(별)'] = df['문제'].apply(lambda x: "⭐" * st.session_state.user_data[x]['importance'])
+if "notes" not in st.session_state:
+    st.session_state["notes"] = load_data(NOTE_DATA_FILE, [])
 
-# -----------------------------------------------------------------------------
-# 4. 좌측 화면 (사이드바 필터링)
-# -----------------------------------------------------------------------------
-st.sidebar.header("🔍 문제 필터링")
+if "selected_q_id" not in st.session_state:
+    st.session_state["selected_q_id"] = st.session_state["questions"][0]["id"] if st.session_state["questions"] else None
 
-rounds = ["전체"] + sorted(list(df['회차'].unique()), reverse=True)
+if "note_action" not in st.session_state:
+    st.session_state["note_action"] = "list"  # list, create, edit
+if "editing_note_id" not in st.session_state:
+    st.session_state["editing_note_id"] = None
 
-# 교시 선택 옵션: 전체, 2~4교시 통합 옵션, 개별 교시
-unique_periods = sorted(list(df['교시'].unique()))
-periods = ["전체", "2~4교시"] + [str(p) for p in unique_periods]
-
-categories = ["전체"] + sorted(list(df['분류'].unique()))
-
-sel_round = st.sidebar.selectbox("회차 선택", rounds)
-sel_period = st.sidebar.selectbox("교시 선택", periods)
-sel_category = st.sidebar.selectbox("분류 선택", categories)
-
-sort_by_clicks = st.sidebar.checkbox("자주 본 문제 순으로 정렬 (조회수 ⇧)")
-
-filtered_df = df.copy()
-
-# 1) 회차 필터링
-if sel_round != "전체":
-    filtered_df = filtered_df[filtered_df['회차'] == sel_round]
-
-# 2) 교시 필터링 (2~4교시 통합 필터 적용)
-if sel_period == "2~4교시":
-    filtered_df = filtered_df[filtered_df['교시'].astype(str).isin(["2", "3", "4"])]
-elif sel_period != "전체":
-    filtered_df = filtered_df[filtered_df['교시'].astype(str) == str(sel_period)]
-
-# 3) 분류 필터링
-if sel_category != "전체":
-    filtered_df = filtered_df[filtered_df['분류'] == sel_category]
-
-if sort_by_clicks:
-    filtered_df = filtered_df.sort_values(by='조회수', ascending=False)
-
-# -----------------------------------------------------------------------------
-# 5. 우측 화면 (리스트 뷰 vs 상세 뷰)
-# -----------------------------------------------------------------------------
-if not st.session_state.show_detail:
-    st.markdown("<h1>📚 금형기술사 기출문제 리스트</h1>", unsafe_allow_html=True)
-    st.write("필터링된 문제 목록입니다. 목록에서 문제를 클릭하면 하단 선택 영역에 자동으로 반영됩니다.")
+# ==========================================
+# 3. 사이드바 (필터링, 검색, 모드 전환)
+# ==========================================
+with st.sidebar:
+    st.title("📘 금형기술사 시스템")
     
-    event = st.dataframe(
-        filtered_df[['회차', '교시', '분류', '문제', '조회수', '중요도(별)']], 
-        use_container_width=True, 
-        hide_index=True,
-        on_select="rerun",
-        selection_mode="single-row",
-        column_config={
-            "회차": st.column_config.Column("회차", width=60),
-            "교시": st.column_config.Column("교시", width=60),
-            "분류": st.column_config.Column("분류", width=110),
-            "문제": st.column_config.Column("문제", width=680),
-            "조회수": st.column_config.Column("조회수", width=70),
-            "중요도(별)": st.column_config.Column("중요도(별)", width=100)
-        }
-    )
-    
-    q_options = list(filtered_df['문제'])
-    if q_options:
-        selected_rows = event.selection.get("rows", [])
-        if selected_rows:
-            row_idx = selected_rows[0]
-            if row_idx < len(filtered_df):
-                st.session_state["sb_question"] = filtered_df.iloc[row_idx]['문제']
-
-        if "sb_question" not in st.session_state or st.session_state["sb_question"] not in q_options:
-            st.session_state["sb_question"] = q_options[0]
-
-        selected_q = st.selectbox("학습할 문제 선택", options=q_options, key="sb_question")
-        
-        if st.button("✏️ 선택한 문제 학습하기", type="primary", use_container_width=False):
-            st.session_state.user_data[selected_q]['clicks'] += 1
-            save_user_data(st.session_state.user_data)
-            
-            st.session_state.current_q = selected_q
-            st.session_state.show_detail = True
+    # [수정사항 3] 화면 전환 모드 선택
+    st.markdown("### 📌 메뉴 선택")
+    mode_col1, mode_col2 = st.columns(2)
+    with mode_col1:
+        if st.button("📝 기출문제", type="primary" if st.session_state["view_mode"] == "기출문제" else "secondary"):
+            st.session_state["view_mode"] = "기출문제"
             st.rerun()
-    else:
-        st.warning("조건에 해당하는 문제가 없습니다.")
-
-else:
-    # --- 상세 학습 뷰 ---
-    q_text = st.session_state.current_q
-    q_data = st.session_state.user_data[q_text]
-    
-    if st.button("⬅️ 리스트로 돌아가기", use_container_width=False):
-        st.session_state.show_detail = False
-        st.session_state.current_q = None
-        st.rerun()
-
-    col_prob, col_star = st.columns([82, 18], vertical_alignment="center")
-
-    with col_prob:
-        st.markdown(f"""
-            <div style="background-color:#2d3748; padding: 8px 12px; border-radius: 8px; margin: 0px;">
-                <div style="color:#63b3ed; font-size: 1.05rem; font-weight: bold; line-height: 1.35; margin-bottom: 4px;">📝 {q_text}</div>
-                <span style="color:#e2e8f0; font-size: 0.85rem;">현재 조회수: {q_data['clicks']}회</span>
-            </div>
-        """, unsafe_allow_html=True)
-
-    with col_star:
-        new_importance = st.selectbox(
-            "중요도 설정", 
-            options=[1, 2, 3, 4, 5], 
-            index=q_data['importance'] - 1,
-            format_func=lambda x: "⭐" * x
-        )
-        if new_importance != q_data['importance']:
-            st.session_state.user_data[q_text]['importance'] = new_importance
-            save_user_data(st.session_state.user_data)
+    with mode_col2:
+        if st.button("📓 학습노트", type="primary" if st.session_state["view_mode"] == "학습노트" else "secondary"):
+            st.session_state["view_mode"] = "학습노트"
             st.rerun()
-
-    tab1, tab2, tab3, tab4, tab5 = st.tabs([
-        "📖 답안 개념 설명", 
-        "✅ 모범 답안", 
-        "📎 추가 자료 및 메모", 
-        "🔍 구글 검색", 
-        "🖼️ 이미지 및 설명 자료"
-    ])
-
-    # -------------------------------------------------------------------------
-    # TAB 1: 개념 설명
-    # -------------------------------------------------------------------------
-    with tab1:
-        st.markdown("### 1. 답안 개념 설명")
-        st.info("해당 문제에 필요한 이론적 배경, 핵심 메커니즘 및 요약 개념을 정리합니다.")
-        
-        key_hide_concept = f"hide_concept_{q_text}"
-        if key_hide_concept not in st.session_state:
-            st.session_state[key_hide_concept] = True
-        is_concept_hidden = st.session_state[key_hide_concept]
-
-        col_t1, col_h1, col_b1 = st.columns([68, 16, 16], vertical_alignment="center")
-        with col_t1:
-            st.write("")
-        with col_h1:
-            toggle_label = "👁️ 입력창 보이기" if is_concept_hidden else "🙈 입력창 숨기기"
-            if st.button(toggle_label, key=f"btn_toggle_concept_{q_text}", use_container_width=True):
-                if f"concept_area_{q_text}" in st.session_state:
-                    st.session_state.user_data[q_text]['concept'] = st.session_state[f"concept_area_{q_text}"]
-                    save_user_data(st.session_state.user_data)
-                st.session_state[key_hide_concept] = not is_concept_hidden
-                st.rerun()
-        with col_b1:
-            if st.button("💾 저장하기", key=f"save_concept_{q_text}", type="primary", use_container_width=True):
-                if f"concept_area_{q_text}" in st.session_state:
-                    st.session_state.user_data[q_text]['concept'] = st.session_state[f"concept_area_{q_text}"]
-                save_user_data(st.session_state.user_data)
-                st.toast("개념 설명이 저장되었습니다!")
-
-        if not is_concept_hidden:
-            concept_text = st.text_area(
-                "개념을 정리하세요. (마크다운 지원)", 
-                value=q_data['concept'], 
-                height=180, 
-                key=f"concept_area_{q_text}",
-                label_visibility="collapsed"
-            )
-            if q_data['concept']:
-                st.write("---")
-                st.markdown("#### 📖 개념 설명 (서식 적용 화면)")
-                with st.container(border=True):
-                    st.markdown(format_readable_text(q_data['concept']))
-        else:
-            if q_data['concept']:
-                with st.container(border=True):
-                    st.markdown(format_readable_text(q_data['concept']))
-            else:
-                st.caption("작성된 개념 설명이 없습니다. '입력창 보이기'를 눌러 내용을 입력해 보세요.")
-
-    # -------------------------------------------------------------------------
-    # TAB 2: 모범 답안
-    # -------------------------------------------------------------------------
-    with tab2:
-        st.markdown("### 2. 실제 시험 모범 답안")
-        st.info("실제 시험 채점 기준에 맞춰 개요, 본론, 결론 형식으로 서술형 답안을 작성합니다.")
-        
-        key_hide_answer = f"hide_answer_{q_text}"
-        if key_hide_answer not in st.session_state:
-            st.session_state[key_hide_answer] = True
-        is_answer_hidden = st.session_state[key_hide_answer]
-
-        col_t2, col_h2, col_b2 = st.columns([68, 16, 16], vertical_alignment="center")
-        with col_t2:
-            st.write("")
-        with col_h2:
-            toggle_label = "👁️ 입력창 보이기" if is_answer_hidden else "🙈 입력창 숨기기"
-            if st.button(toggle_label, key=f"btn_toggle_answer_{q_text}", use_container_width=True):
-                if f"answer_area_{q_text}" in st.session_state:
-                    st.session_state.user_data[q_text]['answer'] = st.session_state[f"answer_area_{q_text}"]
-                    save_user_data(st.session_state.user_data)
-                st.session_state[key_hide_answer] = not is_answer_hidden
-                st.rerun()
-        with col_b2:
-            if st.button("💾 저장하기", key=f"save_answer_{q_text}", type="primary", use_container_width=True):
-                if f"answer_area_{q_text}" in st.session_state:
-                    st.session_state.user_data[q_text]['answer'] = st.session_state[f"answer_area_{q_text}"]
-                save_user_data(st.session_state.user_data)
-                st.toast("모범 답안이 저장되었습니다!")
-
-        if not is_answer_hidden:
-            answer_text = st.text_area(
-                "시험 양식에 맞춘 모범 답안을 작성하세요. (마크다운 지원)", 
-                value=q_data['answer'], 
-                height=180, 
-                key=f"answer_area_{q_text}",
-                label_visibility="collapsed"
-            )
-            if q_data['answer']:
-                st.write("---")
-                st.markdown("#### 📄 모범 답안 (서식 적용 화면)")
-                with st.container(border=True):
-                    st.markdown(format_readable_text(q_data['answer']))
-        else:
-            if q_data['answer']:
-                with st.container(border=True):
-                    st.markdown(format_readable_text(q_data['answer']))
-            else:
-                st.caption("작성된 모범 답안이 없습니다. '입력창 보이기'를 눌러 내용을 입력해 보세요.")
-
-    # -------------------------------------------------------------------------
-    # TAB 3: 추가 자료
-    # -------------------------------------------------------------------------
-    with tab3:
-        st.markdown("### 3. 추가 자료 및 메모")
-        st.info("관련 수식, 외부 논문 출처, 참고 웹페이지 링크 및 개인적인 학습 메모를 작성합니다.")
-        
-        key_hide_extra = f"hide_extra_{q_text}"
-        if key_hide_extra not in st.session_state:
-            st.session_state[key_hide_extra] = True
-        is_extra_hidden = st.session_state[key_hide_extra]
-
-        col_t3, col_h3, col_b3 = st.columns([68, 16, 16], vertical_alignment="center")
-        with col_t3:
-            st.write("")
-        with col_h3:
-            toggle_label = "👁️ 입력창 보이기" if is_extra_hidden else "🙈 입력창 숨기기"
-            if st.button(toggle_label, key=f"btn_toggle_extra_{q_text}", use_container_width=True):
-                if f"extra_area_{q_text}" in st.session_state:
-                    st.session_state.user_data[q_text]['extra'] = st.session_state[f"extra_area_{q_text}"]
-                    save_user_data(st.session_state.user_data)
-                st.session_state[key_hide_extra] = not is_extra_hidden
-                st.rerun()
-        with col_b3:
-            if st.button("💾 저장하기", key=f"save_extra_{q_text}", type="primary", use_container_width=True):
-                if f"extra_area_{q_text}" in st.session_state:
-                    st.session_state.user_data[q_text]['extra'] = st.session_state[f"extra_area_{q_text}"]
-                save_user_data(st.session_state.user_data)
-                st.toast("추가 자료가 저장되었습니다!")
-
-        if not is_extra_hidden:
-            extra_text = st.text_area(
-                "참고할 추가 메모나 링크를 입력하세요. (마크다운 지원)", 
-                value=q_data['extra'], 
-                height=180, 
-                key=f"extra_area_{q_text}",
-                label_visibility="collapsed"
-            )
-            if q_data['extra']:
-                st.write("---")
-                st.markdown("#### 📎 추가 자료 및 메모 (서식 적용 화면)")
-                with st.container(border=True):
-                    st.markdown(format_readable_text(q_data['extra']))
-        else:
-            if q_data['extra']:
-                with st.container(border=True):
-                    st.markdown(format_readable_text(q_data['extra']))
-            else:
-                st.caption("작성된 추가 자료가 없습니다. '입력창 보이기'를 눌러 내용을 입력해 보세요.")
-
-    # -------------------------------------------------------------------------
-    # TAB 4: 구글 검색
-    # -------------------------------------------------------------------------
-    with tab4:
-        st.markdown("### 4. 구글 검색")
-        st.info("문제를 해결하기 위해 관련된 최신 technical자료 및 도면 정보를 구글에서 바로 검색합니다.")
-        
-        search_query = st.text_input("검색어 입력", value=q_text)
-        
-        if search_query:
-            encoded_query = search_query.replace(" ", "+")
-            search_url = f"[https://www.google.com/search?q=](https://www.google.com/search?q=){encoded_query}"
             
-            st.markdown(
-                f"""
-                <a href="{search_url}" target="_blank">
-                    <button style="background-color:#4285F4; color:white; border:none; padding:8px 16px; border-radius:5px; cursor:pointer; font-size:15px; font-weight:bold;">
-                        🌐 구글에서 검색 결과 보기 (새 창)
-                    </button>
-                </a>
-                """, 
-                unsafe_allow_html=True
-            )
+    st.markdown("---")
 
-    # -------------------------------------------------------------------------
-    # TAB 5: 이미지 및 설명 자료
-    # -------------------------------------------------------------------------
-    with tab5:
-        st.markdown("### 5. 이미지 및 설명 자료")
-        st.info("금형 구조 도면, 3D CAD 캡처, 시뮬레이션 결과 이미지와 관련 설명을 함께 등록 및 확인할 수 있습니다.")
+    # 기출문제 모드일 때만 기출문제 필터 노출
+    if st.session_state["view_mode"] == "기출문제":
+        st.subheader("🔍 기출문제 검색 및 필터")
         
-        # 1. 신규 이미지 업로드 및 설명 저장 영역
-        with st.expander("➕ 새 이미지 및 설명 추가하기", expanded=False):
-            uploaded_img = st.file_uploader(
-                "이미지 파일 업로드", 
-                type=["png", "jpg", "jpeg", "webp", "gif"], 
-                key=f"uploader_{q_text}"
-            )
-            img_caption = st.text_input("이미지 제목/캡션 (선택)", key=f"img_cap_{q_text}")
-            img_note = st.text_area(
-                "이미지 설명 내용 입력 (마크다운 서식 지원)", 
-                height=150, 
-                key=f"img_note_{q_text}"
-            )
+        # [수정사항 2] 문제 검색 기능
+        q_search_query = st.text_input("문제 검색", placeholder="검색어를 입력하세요...", key="q_search_input")
+        
+        # 목록 데이터 추출
+        all_rounds = sorted(list(set(q["round"] for q in st.session_state["questions"])))
+        all_periods = sorted(list(set(q["period"] for q in st.session_state["questions"])))
+        all_categories = sorted(list(set(q.get("category", "기타") for q in st.session_state["questions"])))
+
+        # [수정사항 1] 복수 선택 드롭박스(multiselect) 변경
+        selected_rounds = st.multiselect("회차 선택 (복수)", options=all_rounds, default=[])
+        selected_periods = st.multiselect("교시 선택 (복수)", options=all_periods, default=[])
+        selected_categories = st.multiselect("분류 선택 (복수)", options=all_categories, default=[])
+
+        st.markdown("---")
+        
+        # 필터링 로직
+        filtered_qs = st.session_state["questions"]
+        if selected_rounds:
+            filtered_qs = [q for q in filtered_qs if q["round"] in selected_rounds]
+        if selected_periods:
+            filtered_qs = [q for q in filtered_qs if q["period"] in selected_periods]
+        if selected_categories:
+            filtered_qs = [q for q in filtered_qs if q.get("category") in selected_categories]
+        if q_search_query:
+            query_lower = q_search_query.lower()
+            filtered_qs = [
+                q for q in filtered_qs 
+                if query_lower in q["title"].lower() or query_lower in q.get("category", "").lower()
+            ]
+
+        st.subheader(f"📋 문제 리스트 ({len(filtered_qs)}개)")
+        for q in filtered_qs:
+            btn_label = f"[{q['round']} {q['period']}] {q['title'][:18]}..."
+            if st.button(btn_label, key=f"q_btn_{q['id']}"):
+                st.session_state["selected_q_id"] = q["id"]
+                # 조회수 증가
+                q["views"] = q.get("views", 0) + 1
+                save_data(QUESTION_DATA_FILE, st.session_state["questions"])
+                st.rerun()
+
+# ==========================================
+# 4. 메인 화면: 기출문제 상세 View
+# ==========================================
+if st.session_state["view_mode"] == "기출문제":
+    selected_q = next((q for q in st.session_state["questions"] if q["id"] == st.session_state["selected_q_id"]), None)
+    
+    if selected_q:
+        st.title(f"[{selected_q['round']} {selected_q['period']}] {selected_q.get('category', '공통')}")
+        st.subheader(selected_q['title'])
+        
+        col_m1, col_m2, col_m3 = st.columns([1, 1, 4])
+        with col_m1:
+            st.caption(f"👁️ 조회수: {selected_q.get('views', 0)}")
+        with col_m2:
+            st.caption(f"⭐ 중요도: {'★' * selected_q.get('rating', 3)}")
+
+        st.markdown("---")
+
+        # 5단계 상세 학습 탭
+        tab1, tab2, tab3, tab4, tab5 = st.tabs(["💡 핵심 개념", "📝 모범 답안", "📌 추가 메모", "🌐 구글 검색", "🖼️ 이미지/자료"])
+
+        with tab1:
+            st.markdown("### 핵심 개념 정의 및 설명")
+            concept_text = selected_q.get("concept", "등록된 핵심 개념이 없습니다.")
+            st.markdown(f"<div class='readable-content'>{concept_text}</div>", unsafe_allow_html=True)
             
-            if st.button("💾 이미지 및 설명 저장", key=f"btn_save_img_{q_text}", type="primary"):
-                if uploaded_img is not None:
-                    saved_filename = f"{int(time.time())}_{uploaded_img.name}"
-                    file_path = os.path.join(IMAGE_DIR, saved_filename)
-                    
-                    with open(file_path, "wb") as f:
-                        f.write(uploaded_img.getbuffer())
-                    
-                    new_image_item = {
-                        "file_path": file_path,
-                        "caption": img_caption if img_caption else uploaded_img.name,
-                        "note": img_note
-                    }
-                    
-                    st.session_state.user_data[q_text]['image_notes'].append(new_image_item)
-                    save_user_data(st.session_state.user_data)
-                    st.toast("이미지와 설명이 성공적으로 저장되었습니다!")
+            with st.expander("개념 수정하기"):
+                new_concept = st.text_area("개념 작성", value=concept_text, height=150)
+                if st.button("개념 저장", key="save_concept"):
+                    selected_q["concept"] = new_concept
+                    save_data(QUESTION_DATA_FILE, st.session_state["questions"])
+                    st.success("핵심 개념이 저장되었습니다.")
                     st.rerun()
-                else:
-                    st.warning("업로드할 이미지 파일을 선택해 주세요.")
 
-        st.write("---")
-
-        # 2. 저장된 이미지 목록 및 6:4 상세 보기 영역
-        image_notes_list = q_data.get('image_notes', [])
-
-        if not image_notes_list:
-            st.caption("저장된 이미지 자료가 없습니다. 상단의 '➕ 새 이미지 및 설명 추가하기'를 눌러 자료를 등록해 보세요.")
-        else:
-            st.markdown("#### 🖼️ 저장된 이미지 목록")
+        with tab2:
+            st.markdown("### 표준 답안 / 서술 가이드")
+            answer_text = selected_q.get("answer", "등록된 모범 답안이 없습니다.")
+            st.markdown(f"<div class='readable-content'>{answer_text}</div>", unsafe_allow_html=True)
             
-            options_label = [f"[{i+1}] {item.get('caption', '제목 없음')}" for i, item in enumerate(image_notes_list)]
-            
-            selected_img_idx = st.selectbox(
-                "저장된 이미지를 선택하세요",
-                options=range(len(image_notes_list)),
-                format_func=lambda i: options_label[i],
-                key=f"select_img_item_{q_text}"
-            )
-            
-            selected_item = image_notes_list[selected_img_idx]
-            
-            st.write("")
-            col_img, col_text = st.columns([6, 4], gap="medium")
+            with st.expander("모범 답안 수정하기"):
+                new_answer = st.text_area("답안 작성", value=answer_text, height=200)
+                if st.button("답안 저장", key="save_answer"):
+                    selected_q["answer"] = new_answer
+                    save_data(QUESTION_DATA_FILE, st.session_state["questions"])
+                    st.success("모범 답안이 저장되었습니다.")
+                    st.rerun()
 
-            with col_img:
-                st.markdown(f"##### 📷 {selected_item.get('caption', '이미지')}")
-                if os.path.exists(selected_item['file_path']):
-                    st.image(selected_item['file_path'], use_container_width=True)
-                else:
-                    st.error("저장된 이미지 파일을 찾을 수 없습니다.")
+        with tab3:
+            st.markdown("### 개인 학습 메모")
+            memo_text = selected_q.get("memo", "")
+            new_memo = st.text_area("메모를 입력하세요", value=memo_text, height=120)
+            if st.button("메모 저장", key="save_memo"):
+                selected_q["memo"] = new_memo
+                save_data(QUESTION_DATA_FILE, st.session_state["questions"])
+                st.success("메모가 저장되었습니다.")
 
-            with col_text:
-                st.markdown("##### 📝 이미지 설명 내용")
-                note_content = selected_item.get('note', '')
-                if note_content:
-                    with st.container(border=True):
-                        st.markdown(format_readable_text(note_content))
-                else:
-                    st.caption("작성된 설명 내용이 없습니다.")
+        with tab4:
+            st.markdown("### 연관 자료 구글 검색")
+            search_url = f"https://www.google.com/search?q=금형기술사+{selected_q['title']}"
+            st.markdown(f"🔗 [Google에서 '{selected_q['title']}' 관련 기술 자료 검색하기]({search_url})")
+
+        with tab5:
+            st.markdown("### 참고 이미지 및 도면")
+            uploaded_img = st.file_uploader("이미지 첨부", type=["png", "jpg", "jpeg"], key="q_img_up")
+            if uploaded_img:
+                b64_img = image_to_base64(uploaded_img)
+                if "images" not in selected_q:
+                    selected_q["images"] = []
+                selected_q["images"].append(b64_img)
+                save_data(QUESTION_DATA_FILE, st.session_state["questions"])
+                st.success("이미지가 추가되었습니다.")
+                st.rerun()
+
+            if "images" in selected_q and selected_q["images"]:
+                for idx, img_b64 in enumerate(selected_q["images"]):
+                    st.image(img_b64, use_column_width=True)
+                    if st.button(f"이미지 삭제 #{idx+1}", key=f"del_img_{idx}"):
+                        selected_q["images"].pop(idx)
+                        save_data(QUESTION_DATA_FILE, st.session_state["questions"])
+                        st.rerun()
+    else:
+        st.info("좌측 리스트에서 문제를 선택해주세요.")
+
+# ==========================================
+# 5. 메인 화면: 학습노트 (Note List & 생성/수정)
+# ==========================================
+# [수정사항 4, 5, 6] 노트 생성, 검색, 저장, 이미지/링크, 날짜 자동 저장 구현
+elif st.session_state["view_mode"] == "학습노트":
+    st.title("📓 금형기술사 학습노트")
+    
+    # ------------------------------------
+    # A. 노트 작성/수정 폼
+    # ------------------------------------
+    if st.session_state["note_action"] in ["create", "edit"]:
+        is_edit = st.session_state["note_action"] == "edit"
+        target_note = {}
+        if is_edit:
+            target_note = next((n for n in st.session_state["notes"] if n["id"] == st.session_state["editing_note_id"]), {})
+            
+        st.subheader("✏️ " + ("학습노트 수정" if is_edit else "새 학습노트 생성"))
+        
+        with st.form("note_form", clear_on_submit=False):
+            title = st.text_input("제목 *", value=target_note.get("title", ""))
+            keywords_str = st.text_input("키워드 (쉼표로 구분)", value=", ".join(target_note.get("keywords", [])))
+            link = st.text_input("웹 페이지 링크 (선택)", value=target_note.get("link", ""))
+            content = st.text_area("본문 내용 *", value=target_note.get("content", ""), height=250)
+            
+            uploaded_imgs = st.file_uploader("이미지 첨부 (복수 가능)", type=["png", "jpg", "jpeg"], accept_multiple_files=True)
+            
+            col_f1, col_f2 = st.columns([1, 1])
+            with col_f1:
+                submit_btn = st.form_submit_button("💾 저장하기", type="primary")
+            with col_f2:
+                cancel_btn = st.form_submit_button("❌ 취소")
+
+        if cancel_btn:
+            st.session_state["note_action"] = "list"
+            st.session_state["editing_note_id"] = None
+            st.rerun()
+
+        if submit_btn:
+            if not title.strip() or not content.strip():
+                st.error("제목과 본문 내용은 필수 항목입니다.")
+            else:
+                now_str = datetime.now().strftime("%Y-%m-%d %H:%M")
                 
-                st.write("---")
-                if st.button("🗑️ 선택된 이미지 삭제", key=f"del_img_{selected_img_idx}_{q_text}"):
-                    if os.path.exists(selected_item['file_path']):
-                        try:
-                            os.remove(selected_item['file_path'])
-                        except Exception:
-                            pass
-                    st.session_state.user_data[q_text]['image_notes'].pop(selected_img_idx)
-                    save_user_data(st.session_state.user_data)
-                    st.toast("이미지 자료가 삭제되었습니다.")
-                    st.rerun()
+                # 이미지 Base64 인코딩 처리
+                img_b64_list = target_note.get("images", []) if is_edit else []
+                if uploaded_imgs:
+                    for img in uploaded_imgs:
+                        img_b64_list.append(image_to_base64(img))
+
+                keywords = [k.strip() for k in keywords_str.split(",") if k.strip()]
+
+                if is_edit:
+                    target_note["title"] = title
+                    target_note["keywords"] = keywords
+                    target_note["link"] = link
+                    target_note["content"] = content
+                    target_note["images"] = img_b64_list
+                    target_note["updated_at"] = now_str
+                else:
+                    new_note = {
+                        "id": str(datetime.now().timestamp()),
+                        "title": title,
+                        "keywords": keywords,
+                        "link": link,
+                        "content": content,
+                        "images": img_b64_list,
+                        "created_at": now_str,
+                        "updated_at": now_str
+                    }
+                    st.session_state["notes"].insert(0, new_note) # 최신글 상단 배치
+
+                save_data(NOTE_DATA_FILE, st.session_state["notes"])
+                st.success("노트가 성공적으로 저장되었습니다!")
+                st.session_state["note_action"] = "list"
+                st.session_state["editing_note_id"] = None
+                st.rerun()
+
+    # ------------------------------------
+    # B. 노트 목록 및 검색 화면
+    # ------------------------------------
+    else:
+        # 상단 툴바 (노트 생성 버튼 & 검색)
+        col_t1, col_t2 = st.columns([1, 3])
+        with col_t1:
+            if st.button("➕ 새 노트 작성", type="primary"):
+                st.session_state["note_action"] = "create"
+                st.rerun()
+        with col_t2:
+            note_search = st.text_input("🔍 노트 검색 (제목, 키워드, 본문)", placeholder="검색어를 입력하고 엔터를 누르세요...", label_visibility="collapsed")
+
+        st.markdown("<br>", unsafe_allow_html=True)
+
+        # 노트 필터링
+        filtered_notes = st.session_state["notes"]
+        if note_search:
+            s_query = note_search.lower()
+            filtered_notes = [
+                n for n in filtered_notes 
+                if s_query in n["title"].lower() 
+                or s_query in n["content"].lower() 
+                or any(s_query in k.lower() for k in n.get("keywords", []))
+            ]
+
+        if not filtered_notes:
+            st.info("등록된 학습노트가 없거나 검색 결과가 없습니다.")
+        else:
+            for note in filtered_notes:
+                with st.container():
+                    st.markdown("<div class='st-card'>", unsafe_allow_html=True)
+                    
+                    # 제목 및 날짜
+                    c_title, c_act = st.columns([4, 1])
+                    with c_title:
+                        st.markdown(f"### {note['title']}")
+                        st.markdown(f"<span class='text-date'>📅 작성일: {note.get('created_at', '-')} | 🔄 수정일: {note.get('updated_at', '-')}</span>", unsafe_allow_html=True)
+                    with c_act:
+                        btn_e, btn_d = st.columns(2)
+                        if btn_e.button("✏️", key=f"edit_n_{note['id']}"):
+                            st.session_state["note_action"] = "edit"
+                            st.session_state["editing_note_id"] = note["id"]
+                            st.rerun()
+                        if btn_d.button("🗑️", key=f"del_n_{note['id']}"):
+                            st.session_state["notes"] = [n for n in st.session_state["notes"] if n["id"] != note["id"]]
+                            save_data(NOTE_DATA_FILE, st.session_state["notes"])
+                            st.rerun()
+
+                    # 키워드 표시
+                    if note.get("keywords"):
+                        kw_html = "".join([f"<span class='badge-keyword'>#{k}</span>" for k in note["keywords"]])
+                        st.markdown(f"<div style='margin: 8px 0;'>{kw_html}</div>", unsafe_allow_html=True)
+
+                    # 링크 표시
+                    if note.get("link"):
+                        st.markdown(f"🔗 **관련 링크:** [{note['link']}]({note['link']})")
+
+                    # 본문 내용
+                    st.markdown("---")
+                    st.markdown(f"<div class='readable-content'>{note['content']}</div>", unsafe_allow_html=True)
+
+                    # 첨부 이미지 출력
+                    if note.get("images"):
+                        st.markdown("<br><b>🖼️ 첨부 이미지</b>", unsafe_allow_html=True)
+                        img_cols = st.columns(min(len(note["images"]), 3))
+                        for idx, img_data in enumerate(note["images"]):
+                            with img_cols[idx % 3]:
+                                st.image(img_data, use_column_width=True)
+
+                    st.markdown("</div>", unsafe_allow_html=True)
