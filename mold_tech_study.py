@@ -77,7 +77,6 @@ st.markdown("""
 QUESTION_DATA_FILE = "user_study_data.json"
 NOTE_DATA_FILE = "user_notes_data.json"
 
-# 샘플 기출문제 데이터 (기본값)
 DEFAULT_QUESTIONS = [
     {
         "id": "1",
@@ -121,7 +120,6 @@ def save_data(file_path, data):
     with open(file_path, "w", encoding="utf-8") as f:
         json.dump(data, f, ensure_ascii=False, indent=2)
 
-# 이미지 업로드를 Base64 코드로 변환
 def image_to_base64(uploaded_file):
     if uploaded_file is not None:
         bytes_data = uploaded_file.getvalue()
@@ -129,21 +127,29 @@ def image_to_base64(uploaded_file):
         return f"data:{uploaded_file.type};base64,{base64_str}"
     return None
 
-# 세션 관리
+# 세션 초기화 및 ID 자동 보완 (KeyError 방지)
 if "view_mode" not in st.session_state:
-    st.session_state["view_mode"] = "기출문제"  # 디폴트: 기출문제
+    st.session_state["view_mode"] = "기출문제"
 
 if "questions" not in st.session_state:
-    st.session_state["questions"] = load_data(QUESTION_DATA_FILE, DEFAULT_QUESTIONS)
+    loaded_qs = load_data(QUESTION_DATA_FILE, DEFAULT_QUESTIONS)
+    # 기존 JSON 파일에 id 키가 없는 경우 대비한 자동 ID 생성
+    for idx, q in enumerate(loaded_qs):
+        if "id" not in q or not q["id"]:
+            q["id"] = str(idx + 1)
+    st.session_state["questions"] = loaded_qs
 
 if "notes" not in st.session_state:
     st.session_state["notes"] = load_data(NOTE_DATA_FILE, [])
 
 if "selected_q_id" not in st.session_state:
-    st.session_state["selected_q_id"] = st.session_state["questions"][0]["id"] if st.session_state["questions"] else None
+    if st.session_state["questions"]:
+        st.session_state["selected_q_id"] = st.session_state["questions"][0].get("id", "1")
+    else:
+        st.session_state["selected_q_id"] = None
 
 if "note_action" not in st.session_state:
-    st.session_state["note_action"] = "list"  # list, create, edit
+    st.session_state["note_action"] = "list"
 if "editing_note_id" not in st.session_state:
     st.session_state["editing_note_id"] = None
 
@@ -153,7 +159,6 @@ if "editing_note_id" not in st.session_state:
 with st.sidebar:
     st.title("📘 금형기술사 시스템")
     
-    # [수정사항 3] 화면 전환 모드 선택
     st.markdown("### 📌 메뉴 선택")
     mode_col1, mode_col2 = st.columns(2)
     with mode_col1:
@@ -167,46 +172,45 @@ with st.sidebar:
             
     st.markdown("---")
 
-    # 기출문제 모드일 때만 기출문제 필터 노출
     if st.session_state["view_mode"] == "기출문제":
         st.subheader("🔍 기출문제 검색 및 필터")
         
-        # [수정사항 2] 문제 검색 기능
         q_search_query = st.text_input("문제 검색", placeholder="검색어를 입력하세요...", key="q_search_input")
         
-        # 목록 데이터 추출
-        all_rounds = sorted(list(set(q["round"] for q in st.session_state["questions"])))
-        all_periods = sorted(list(set(q["period"] for q in st.session_state["questions"])))
+        all_rounds = sorted(list(set(q.get("round", "") for q in st.session_state["questions"] if q.get("round"))))
+        all_periods = sorted(list(set(q.get("period", "") for q in st.session_state["questions"] if q.get("period"))))
         all_categories = sorted(list(set(q.get("category", "기타") for q in st.session_state["questions"])))
 
-        # [수정사항 1] 복수 선택 드롭박스(multiselect) 변경
         selected_rounds = st.multiselect("회차 선택 (복수)", options=all_rounds, default=[])
         selected_periods = st.multiselect("교시 선택 (복수)", options=all_periods, default=[])
         selected_categories = st.multiselect("분류 선택 (복수)", options=all_categories, default=[])
 
         st.markdown("---")
         
-        # 필터링 로직
         filtered_qs = st.session_state["questions"]
         if selected_rounds:
-            filtered_qs = [q for q in filtered_qs if q["round"] in selected_rounds]
+            filtered_qs = [q for q in filtered_qs if q.get("round") in selected_rounds]
         if selected_periods:
-            filtered_qs = [q for q in filtered_qs if q["period"] in selected_periods]
+            filtered_qs = [q for q in filtered_qs if q.get("period") in selected_periods]
         if selected_categories:
             filtered_qs = [q for q in filtered_qs if q.get("category") in selected_categories]
         if q_search_query:
             query_lower = q_search_query.lower()
             filtered_qs = [
                 q for q in filtered_qs 
-                if query_lower in q["title"].lower() or query_lower in q.get("category", "").lower()
+                if query_lower in q.get("title", "").lower() or query_lower in q.get("category", "").lower()
             ]
 
         st.subheader(f"📋 문제 리스트 ({len(filtered_qs)}개)")
         for q in filtered_qs:
-            btn_label = f"[{q['round']} {q['period']}] {q['title'][:18]}..."
-            if st.button(btn_label, key=f"q_btn_{q['id']}"):
-                st.session_state["selected_q_id"] = q["id"]
-                # 조회수 증가
+            q_id = q.get("id", str(hash(q.get("title", ""))))
+            round_str = q.get("round", "")
+            period_str = q.get("period", "")
+            title_str = q.get("title", "제목 없음")
+            btn_label = f"[{round_str} {period_str}] {title_str[:18]}..."
+            
+            if st.button(btn_label, key=f"q_btn_{q_id}"):
+                st.session_state["selected_q_id"] = q_id
                 q["views"] = q.get("views", 0) + 1
                 save_data(QUESTION_DATA_FILE, st.session_state["questions"])
                 st.rerun()
@@ -215,11 +219,11 @@ with st.sidebar:
 # 4. 메인 화면: 기출문제 상세 View
 # ==========================================
 if st.session_state["view_mode"] == "기출문제":
-    selected_q = next((q for q in st.session_state["questions"] if q["id"] == st.session_state["selected_q_id"]), None)
+    selected_q = next((q for q in st.session_state["questions"] if str(q.get("id")) == str(st.session_state["selected_q_id"])), None)
     
     if selected_q:
-        st.title(f"[{selected_q['round']} {selected_q['period']}] {selected_q.get('category', '공통')}")
-        st.subheader(selected_q['title'])
+        st.title(f"[{selected_q.get('round', '')} {selected_q.get('period', '')}] {selected_q.get('category', '공통')}")
+        st.subheader(selected_q.get('title', ''))
         
         col_m1, col_m2, col_m3 = st.columns([1, 1, 4])
         with col_m1:
@@ -229,7 +233,6 @@ if st.session_state["view_mode"] == "기출문제":
 
         st.markdown("---")
 
-        # 5단계 상세 학습 탭
         tab1, tab2, tab3, tab4, tab5 = st.tabs(["💡 핵심 개념", "📝 모범 답안", "📌 추가 메모", "🌐 구글 검색", "🖼️ 이미지/자료"])
 
         with tab1:
@@ -269,8 +272,8 @@ if st.session_state["view_mode"] == "기출문제":
 
         with tab4:
             st.markdown("### 연관 자료 구글 검색")
-            search_url = f"https://www.google.com/search?q=금형기술사+{selected_q['title']}"
-            st.markdown(f"🔗 [Google에서 '{selected_q['title']}' 관련 기술 자료 검색하기]({search_url})")
+            search_url = f"https://www.google.com/search?q=금형기술사+{selected_q.get('title', '')}"
+            st.markdown(f"🔗 [Google에서 '{selected_q.get('title', '')}' 관련 기술 자료 검색하기]({search_url})")
 
         with tab5:
             st.markdown("### 참고 이미지 및 도면")
@@ -297,18 +300,14 @@ if st.session_state["view_mode"] == "기출문제":
 # ==========================================
 # 5. 메인 화면: 학습노트 (Note List & 생성/수정)
 # ==========================================
-# [수정사항 4, 5, 6] 노트 생성, 검색, 저장, 이미지/링크, 날짜 자동 저장 구현
 elif st.session_state["view_mode"] == "학습노트":
     st.title("📓 금형기술사 학습노트")
     
-    # ------------------------------------
-    # A. 노트 작성/수정 폼
-    # ------------------------------------
     if st.session_state["note_action"] in ["create", "edit"]:
         is_edit = st.session_state["note_action"] == "edit"
         target_note = {}
         if is_edit:
-            target_note = next((n for n in st.session_state["notes"] if n["id"] == st.session_state["editing_note_id"]), {})
+            target_note = next((n for n in st.session_state["notes"] if str(n.get("id")) == str(st.session_state["editing_note_id"])), {})
             
         st.subheader("✏️ " + ("학습노트 수정" if is_edit else "새 학습노트 생성"))
         
@@ -337,7 +336,6 @@ elif st.session_state["view_mode"] == "학습노트":
             else:
                 now_str = datetime.now().strftime("%Y-%m-%d %H:%M")
                 
-                # 이미지 Base64 인코딩 처리
                 img_b64_list = target_note.get("images", []) if is_edit else []
                 if uploaded_imgs:
                     for img in uploaded_imgs:
@@ -363,7 +361,7 @@ elif st.session_state["view_mode"] == "학습노트":
                         "created_at": now_str,
                         "updated_at": now_str
                     }
-                    st.session_state["notes"].insert(0, new_note) # 최신글 상단 배치
+                    st.session_state["notes"].insert(0, new_note)
 
                 save_data(NOTE_DATA_FILE, st.session_state["notes"])
                 st.success("노트가 성공적으로 저장되었습니다!")
@@ -371,11 +369,7 @@ elif st.session_state["view_mode"] == "학습노트":
                 st.session_state["editing_note_id"] = None
                 st.rerun()
 
-    # ------------------------------------
-    # B. 노트 목록 및 검색 화면
-    # ------------------------------------
     else:
-        # 상단 툴바 (노트 생성 버튼 & 검색)
         col_t1, col_t2 = st.columns([1, 3])
         with col_t1:
             if st.button("➕ 새 노트 작성", type="primary"):
@@ -386,14 +380,13 @@ elif st.session_state["view_mode"] == "학습노트":
 
         st.markdown("<br>", unsafe_allow_html=True)
 
-        # 노트 필터링
         filtered_notes = st.session_state["notes"]
         if note_search:
             s_query = note_search.lower()
             filtered_notes = [
                 n for n in filtered_notes 
-                if s_query in n["title"].lower() 
-                or s_query in n["content"].lower() 
+                if s_query in n.get("title", "").lower() 
+                or s_query in n.get("content", "").lower() 
                 or any(s_query in k.lower() for k in n.get("keywords", []))
             ]
 
@@ -401,39 +394,35 @@ elif st.session_state["view_mode"] == "학습노트":
             st.info("등록된 학습노트가 없거나 검색 결과가 없습니다.")
         else:
             for note in filtered_notes:
+                note_id = note.get("id", str(hash(note.get("title", ""))))
                 with st.container():
                     st.markdown("<div class='st-card'>", unsafe_allow_html=True)
                     
-                    # 제목 및 날짜
                     c_title, c_act = st.columns([4, 1])
                     with c_title:
-                        st.markdown(f"### {note['title']}")
+                        st.markdown(f"### {note.get('title', '제목 없음')}")
                         st.markdown(f"<span class='text-date'>📅 작성일: {note.get('created_at', '-')} | 🔄 수정일: {note.get('updated_at', '-')}</span>", unsafe_allow_html=True)
                     with c_act:
                         btn_e, btn_d = st.columns(2)
-                        if btn_e.button("✏️", key=f"edit_n_{note['id']}"):
+                        if btn_e.button("✏️", key=f"edit_n_{note_id}"):
                             st.session_state["note_action"] = "edit"
-                            st.session_state["editing_note_id"] = note["id"]
+                            st.session_state["editing_note_id"] = note_id
                             st.rerun()
-                        if btn_d.button("🗑️", key=f"del_n_{note['id']}"):
-                            st.session_state["notes"] = [n for n in st.session_state["notes"] if n["id"] != note["id"]]
+                        if btn_d.button("🗑️", key=f"del_n_{note_id}"):
+                            st.session_state["notes"] = [n for n in st.session_state["notes"] if str(n.get("id")) != str(note_id)]
                             save_data(NOTE_DATA_FILE, st.session_state["notes"])
                             st.rerun()
 
-                    # 키워드 표시
                     if note.get("keywords"):
                         kw_html = "".join([f"<span class='badge-keyword'>#{k}</span>" for k in note["keywords"]])
                         st.markdown(f"<div style='margin: 8px 0;'>{kw_html}</div>", unsafe_allow_html=True)
 
-                    # 링크 표시
                     if note.get("link"):
                         st.markdown(f"🔗 **관련 링크:** [{note['link']}]({note['link']})")
 
-                    # 본문 내용
                     st.markdown("---")
-                    st.markdown(f"<div class='readable-content'>{note['content']}</div>", unsafe_allow_html=True)
+                    st.markdown(f"<div class='readable-content'>{note.get('content', '')}</div>", unsafe_allow_html=True)
 
-                    # 첨부 이미지 출력
                     if note.get("images"):
                         st.markdown("<br><b>🖼️ 첨부 이미지</b>", unsafe_allow_html=True)
                         img_cols = st.columns(min(len(note["images"]), 3))
