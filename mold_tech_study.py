@@ -948,13 +948,25 @@ elif st.session_state.main_mode == "note":
         if not filtered_notes:
             st.info("등록된 학습노트가 없거나 검색 결과가 없습니다.")
         else:
-            # 노트 클릭 시 상세 화면으로 전환되는 카드형 버튼 목록
+            # 💡 [수정 포인트] 컬럼 분리로 왼쪽은 제목 버튼, 오른쪽 끝은 수정 날짜 정렬
             for note in filtered_notes:
                 has_img = "🖼️ " if note.get("image_base64") else ""
                 has_link = "🔗 " if note.get("link") else ""
-                btn_label = f"📌 [{note['category']}] {note['title']} {has_img}{has_link} *(수정: {note['updated_at']})*"
+                btn_label = f"📌 [{note['category']}] {note['title']} {has_img}{has_link}"
                 
-                if st.button(btn_label, key=f"note_item_{note['id']}", use_container_width=True):
-                    st.session_state.selected_note_id = note["id"]
-                    st.session_state.note_sub_mode = "detail"
-                    st.rerun()
+                col_note_btn, col_note_date = st.columns([7.5, 2.5])
+                
+                with col_note_btn:
+                    if st.button(btn_label, key=f"note_item_{note['id']}", use_container_width=True):
+                        st.session_state.selected_note_id = note["id"]
+                        st.session_state.note_sub_mode = "detail"
+                        st.rerun()
+                        
+                with col_note_date:
+                    # 버튼과 높이를 맞추고 우측 정렬 적용
+                    st.markdown(
+                        f"<div style='text-align: right; line-height: 38px; color: #777; font-size: 0.85rem;'>"
+                        f"수정: {note['updated_at']}"
+                        f"</div>",
+                        unsafe_allow_html=True
+                    )
