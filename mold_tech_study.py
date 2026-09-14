@@ -5,10 +5,15 @@ import os
 import re
 import time
 import calendar
-from datetime import datetime, date
+from datetime import datetime, date, timezone, timedelta
 import base64
 
 NOTES_FILE = "notes.json"
+
+# 한국 표준시(KST: UTC+9) 기준 오늘 날짜 구하기 함수
+def get_kst_today():
+    kst = timezone(timedelta(hours=9))
+    return datetime.now(kst).date()
 
 # 학습노트 로드 함수
 def load_notes():
@@ -31,39 +36,41 @@ def convert_image_to_base64(uploaded_file):
         return base64.b64encode(uploaded_file.getvalue()).decode()
     return None
 
-# 커스텀 미니 달력 HTML 생성 함수 (블랙 테마 & 요일별 색상 적용)
+# 커스텀 미니 달력 HTML 생성 함수 (폭 고정 & 요일 폭 동일 적용)
 def render_mini_calendar():
-    today = date.today()
+    today = get_kst_today()
     year, month, today_day = today.year, today.month, today.day
     cal = calendar.monthcalendar(year, month)
     
     html = f"""
-    <div style="background-color: #121212; border-radius: 8px; padding: 10px 8px; width: 100%; box-sizing: border-box; margin-bottom: 6px;">
-        <div style="text-align: center; font-weight: bold; font-size: 0.88rem; margin-bottom: 6px; color: #ffffff;">
+    <div style="background-color: #121212; border-radius: 8px; padding: 10px 4px; width: 100%; box-sizing: border-box; margin-bottom: 8px; overflow: hidden;">
+        <div style="text-align: center; font-weight: bold; font-size: 0.88rem; margin-bottom: 8px; color: #ffffff;">
             📅 {year}년 {month}월
         </div>
-        <table style="width: 100%; border-collapse: collapse; text-align: center; font-size: 0.78rem;">
+        <table style="width: 100%; table-layout: fixed; border-collapse: collapse; text-align: center; font-size: 0.75rem; margin: 0; padding: 0;">
             <thead>
                 <tr style="font-weight: 600; border-bottom: 1px solid #333333;">
-                    <th style="color: #ff7979; padding: 3px 0;">일</th>
-                    <th style="color: #ffffff; padding: 3px 0;">월</th>
-                    <th style="color: #ffffff; padding: 3px 0;">화</th>
-                    <th style="color: #ffffff; padding: 3px 0;">수</th>
-                    <th style="color: #ffffff; padding: 3px 0;">목</th>
-                    <th style="color: #ffffff; padding: 3px 0;">금</th>
-                    <th style="color: #64b5f6; padding: 3px 0;">토</th>
+                    <th style="width: 14.285%; color: #ff7979; padding: 4px 0;">일</th>
+                    <th style="width: 14.285%; color: #ffffff; padding: 4px 0;">월</th>
+                    <th style="width: 14.285%; color: #ffffff; padding: 4px 0;">화</th>
+                    <th style="width: 14.285%; color: #ffffff; padding: 4px 0;">수</th>
+                    <th style="width: 14.285%; color: #ffffff; padding: 4px 0;">목</th>
+                    <th style="width: 14.285%; color: #ffffff; padding: 4px 0;">금</th>
+                    <th style="width: 14.285%; color: #64b5f6; padding: 4px 0;">토</th>
                 </tr>
             </thead>
             <tbody>
     """
     for week in cal:
-        html += "<tr style='height: 24px;'>"
+        html += "<tr style='height: 26px;'>"
         for idx, day in enumerate(week):
             if day == 0:
-                html += "<td></td>"
+                html += "<td style='width: 14.285%; padding: 2px 0;'></td>"
             elif day == today_day:
-                # 오늘 날짜 하이라이트 (빨간 원형 배지)
-                html += f"<td><span style='background-color: #ff4b4b; color: #ffffff; border-radius: 50%; padding: 2px 6px; font-weight: bold; font-size: 0.75rem; display: inline-block; min-width: 18px;'>{day}</span></td>"
+                # 오늘 날짜 하이라이트 (중앙 정렬 완벽 적용)
+                html += f"""<td style='width: 14.285%; padding: 2px 0; text-align: center;'>
+                    <span style='background-color: #ff4b4b; color: #ffffff; border-radius: 50%; width: 20px; height: 20px; line-height: 20px; display: inline-block; font-weight: bold; font-size: 0.72rem; margin: 0 auto;'>{day}</span>
+                </td>"""
             else:
                 if idx == 0:     # 일요일: 연한 빨강
                     color_style = "color: #ff7979;"
@@ -71,7 +78,7 @@ def render_mini_calendar():
                     color_style = "color: #64b5f6;"
                 else:            # 평일: 흰색
                     color_style = "color: #ffffff;"
-                html += f"<td style='{color_style}'>{day}</td>"
+                html += f"<td style='width: 14.285%; padding: 2px 0; {color_style}'>{day}</td>"
         html += "</tr>"
     html += "</tbody></table></div>"
     return html
@@ -126,11 +133,6 @@ st.markdown("""
 
         section[data-testid="stSidebar"] div[data-testid="stElementContainer"] {
             margin-bottom: 2px !important;
-        }
-
-        section[data-testid="stSidebar"] hr {
-            margin-top: 0.3rem !important;
-            margin-bottom: 0.3rem !important;
         }
 
         /* 4. 파일 업로더 너비 100% 확대 */
@@ -336,15 +338,15 @@ with st.sidebar:
     sort_by_clicks = st.checkbox("자주 본 문제 순 정렬 (조회수 ⇧)")
 
     # -------------------------------------------------------------------------
-    # 4. 사이드바 하단: 블랙 테마 미니 달력 & D-Day 영역
+    # 4. 사이드바 하단: 상단 필터 영역과 충분한 여백(Gap) 확보 및 구분선 배치
     # -------------------------------------------------------------------------
-    st.markdown("---")
+    st.markdown("<div style='margin-top: 25px; border-top: 1px solid #333333; padding-top: 15px;'></div>", unsafe_allow_html=True)
     
     # 블랙 배경 미니 달력 출력
     st.markdown(render_mini_calendar(), unsafe_allow_html=True)
 
-    # D-Day 계산 로직
-    today_date = date.today()
+    # D-Day 계산 로직 (KST 기준)
+    today_date = get_kst_today()
     if st.session_state.d_day_target:
         target_dt = datetime.strptime(st.session_state.d_day_target, "%Y-%m-%d").date()
         diff_days = (target_dt - today_date).days
@@ -369,7 +371,7 @@ with st.sidebar:
 
     # D-Day 날짜 선택 피커 (버튼 클릭 시 표시)
     if st.session_state.show_d_day_picker:
-        default_val = datetime.strptime(st.session_state.d_day_target, "%Y-%m-%d").date() if st.session_state.d_day_target else date.today()
+        default_val = datetime.strptime(st.session_state.d_day_target, "%Y-%m-%d").date() if st.session_state.d_day_target else get_kst_today()
         selected_date = st.date_input("목표 시험일 선택", value=default_val, key="d_day_picker_input")
         if st.button("확인 및 저장", use_container_width=True, key="btn_save_dday"):
             st.session_state.d_day_target = selected_date.strftime("%Y-%m-%d")
