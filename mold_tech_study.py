@@ -4,7 +4,8 @@ import json
 import os
 import re
 import time
-from datetime import datetime
+import calendar
+from datetime import datetime, date
 import base64
 
 NOTES_FILE = "notes.json"
@@ -30,12 +31,56 @@ def convert_image_to_base64(uploaded_file):
         return base64.b64encode(uploaded_file.getvalue()).decode()
     return None
 
+# 미니 달력 HTML 생성 함수
+def render_mini_calendar():
+    today = date.today()
+    year, month, today_day = today.year, today.month, today.day
+    cal = calendar.monthcalendar(year, month)
+    
+    html = f"""
+    <div style="text-align: center; font-weight: bold; font-size: 0.88rem; margin-top: 6px; margin-bottom: 4px; color: #333;">
+        📅 {year}년 {month}월
+    </div>
+    <table style="width: 100%; border-collapse: collapse; text-align: center; font-size: 0.78rem; margin-bottom: 6px;">
+        <thead>
+            <tr style="color: #777; font-weight: 600; border-bottom: 1px solid #ddd;">
+                <th style="color: #e63946; padding: 2px;">일</th>
+                <th style="padding: 2px;">월</th>
+                <th style="padding: 2px;">화</th>
+                <th style="padding: 2px;">수</th>
+                <th style="padding: 2px;">목</th>
+                <th style="padding: 2px;">금</th>
+                <th style="color: #457b9d; padding: 2px;">토</th>
+            </tr>
+        </thead>
+        <tbody>
+    """
+    for week in cal:
+        html += "<tr style='height: 22px;'>"
+        for idx, day in enumerate(week):
+            if day == 0:
+                html += "<td></td>"
+            elif day == today_day:
+                html += f"<td><span style='background-color: #ff4b4b; color: white; border-radius: 50%; padding: 2px 5px; font-weight: bold; font-size: 0.75rem;'>{day}</span></td>"
+            else:
+                color_style = "color: #e63946;" if idx == 0 else ("color: #457b9d;" if idx == 6 else "color: #333;")
+                html += f"<td style='{color_style}'>{day}</td>"
+        html += "</tr>"
+    html += "</tbody></table>"
+    return html
+
 # 세션 상태 초기화 (기본 모드: exam)
 if "main_mode" not in st.session_state:
-    st.session_state.main_mode = "exam"  # 'exam' (기출문제) 또는 'note' (학습노트)
+    st.session_state.main_mode = "exam"
 
 if "notes" not in st.session_state:
     st.session_state.notes = load_notes()
+
+if "d_day_target" not in st.session_state:
+    st.session_state.d_day_target = None
+
+if "show_d_day_picker" not in st.session_state:
+    st.session_state.show_d_day_picker = False
 
 
 # -----------------------------------------------------------------------------
@@ -77,8 +122,8 @@ st.markdown("""
         }
 
         section[data-testid="stSidebar"] hr {
-            margin-top: 0.4rem !important;
-            margin-bottom: 0.4rem !important;
+            margin-top: 0.3rem !important;
+            margin-bottom: 0.3rem !important;
         }
 
         /* 4. 파일 업로더 너비 100% 확대, 높이 단축 및 여백 최소화 */
@@ -99,7 +144,7 @@ st.markdown("""
             padding-bottom: 0px !important;
         }
 
-        /* 5. 버튼 스타일 정의 (사이드바 버튼 너비 100% 및 밀도 높이기) */
+        /* 5. 버튼 스타일 정의 */
         div.stButton > button {
             display: inline-flex !important;
             justify-content: center !important;
@@ -114,14 +159,14 @@ st.markdown("""
         
         section[data-testid="stSidebar"] div.stButton > button {
             width: 100% !important;
-            font-size: 0.85rem !important;
+            font-size: 0.82rem !important;
         }
 
         div.stButton > button p {
             margin: 0 !important;
             padding: 0 !important;
             text-align: center !important;
-            font-size: 0.85rem !important;
+            font-size: 0.82rem !important;
         }
 
         /* 6. 사이드바 필터 라벨 및 드롭다운 밀도 조정 */
@@ -169,48 +214,16 @@ st.markdown("""
             margin-bottom: 2px !important;
         }
 
-        /* 7. 상세 페이지 문제 박스와 하단 탭 사이 간격 */
-        div[data-testid="stTabs"] {
-            margin-top: 1.0rem !important;
-        }
-
-        /* 8. 탭 상단 우측 버튼 정렬 */
-        div[data-testid="stTabs"] div[data-testid="stHorizontalBlock"] > div[data-testid="column"]:nth-child(2) div[data-testid="stButton"],
-        div[data-testid="stTabs"] div[data-testid="stHorizontalBlock"] > div[data-testid="column"]:nth-child(3) div[data-testid="stButton"] {
-            display: flex !important;
-            width: 100% !important;
-        }
-        
-        div[data-testid="stTabs"] div[data-testid="stButton"] > button {
-            width: 100% !important;
-        }
-
-        /* 9. 본문 마크다운 서식 조정 */
-        div[data-testid="stMarkdownContainer"] p {
-            line-height: 1.85 !important;
-            margin-bottom: 0.9em !important;
-            word-break: keep-all !important;
-            font-size: 1.02rem !important;
-        }
-
-        div[data-testid="stMarkdownContainer"] ol {
-            list-style-type: decimal !important;
-            margin-left: 1.8em !important;
-            padding-left: 0.2em !important;
-            margin-bottom: 0.8em !important;
-        }
-        
-        div[data-testid="stMarkdownContainer"] ul {
-            list-style-type: disc !important;
-            margin-left: 1.8em !important;
-            padding-left: 0.2em !important;
-            margin-bottom: 0.8em !important;
-        }
-
-        div[data-testid="stMarkdownContainer"] li {
-            line-height: 1.8 !important;
-            margin-bottom: 0.4em !important;
-            word-break: keep-all !important;
+        /* D-Day 표시 박스 커스텀 */
+        .dday-box {
+            background-color: #ff4b4b;
+            color: white;
+            font-weight: bold;
+            font-size: 1.05rem;
+            line-height: 32px;
+            text-align: center;
+            border-radius: 6px;
+            height: 32px;
         }
     </style>
 """, unsafe_allow_html=True)
@@ -226,37 +239,6 @@ def load_user_data():
 def save_user_data(data):
     with open(USER_DATA_FILE, 'w', encoding='utf-8') as f:
         json.dump(data, f, ensure_ascii=False, indent=4)
-
-def format_readable_text(text):
-    """가독성 향상을 위한 마크다운 텍스트 자동 가공 함수"""
-    if not text:
-        return ""
-    
-    lines = text.splitlines()
-    formatted_lines = []
-    
-    for line in lines:
-        stripped = line.strip()
-        if stripped.startswith(('#', '|', '```', '---')) or not stripped:
-            formatted_lines.append(line)
-            continue
-        
-        sentences = re.split(r'(?<=\.)\s+', line)
-        if len(sentences) > 1:
-            processed_line = ""
-            curr_len = 0
-            for idx, s in enumerate(sentences):
-                curr_len += len(s)
-                if curr_len >= 45 and s.endswith('.'):
-                    processed_line += s + "  \n"
-                    curr_len = 0
-                else:
-                    processed_line += s + (" " if idx < len(sentences) - 1 else "")
-            formatted_lines.append(processed_line)
-        else:
-            formatted_lines.append(line)
-            
-    return "\n".join(formatted_lines)
 
 if "user_data" not in st.session_state or not isinstance(st.session_state.user_data, dict):
     st.session_state.user_data = load_user_data()
@@ -292,7 +274,7 @@ def load_excel_data(uploaded_file):
     return df
 
 # -----------------------------------------------------------------------------
-# 3. 사이드바 레이아웃 (파일 업로드 -> 메인 모드 버튼 -> 검색 및 필터)
+# 3. 사이드바 레이아웃
 # -----------------------------------------------------------------------------
 with st.sidebar:
     # 1. 상단 100% 폭 파일 업로더
@@ -316,7 +298,7 @@ with st.sidebar:
     st.markdown("---")
     st.markdown("**🔍 문제 필터링**")
 
-    # 3. 키워드 검색 및 필터 컨트롤 (간격 최소화)
+    # 3. 키워드 검색 및 필터 컨트롤
     search_keyword = st.text_input("문제 키워드 검색", placeholder="검색어 입력...", label_visibility="collapsed")
 
     df = load_excel_data(uploaded_file)
@@ -386,6 +368,28 @@ with st.sidebar:
             st.session_state.d_day_target = selected_date.strftime("%Y-%m-%d")
             st.session_state.show_d_day_picker = False
             st.rerun()
+
+# -----------------------------------------------------------------------------
+# 5. 필터링 조건 적용
+# -----------------------------------------------------------------------------
+filtered_df = df.copy()
+
+if search_keyword.strip():
+    filtered_df = filtered_df[
+        filtered_df['문제'].astype(str).str.contains(search_keyword.strip(), case=False, na=False)
+    ]
+
+if sel_rounds:
+    filtered_df = filtered_df[filtered_df['회차'].isin(sel_rounds)]
+
+if sel_periods:
+    filtered_df = filtered_df[filtered_df['교시'].astype(str).isin(sel_periods)]
+
+if sel_categories:
+    filtered_df = filtered_df[filtered_df['분류'].isin(sel_categories)]
+
+if sort_by_clicks:
+    filtered_df = filtered_df.sort_values(by='조회수', ascending=False)
 
 # -----------------------------------------------------------------------------
 # 5. 필터링 조건 적용
