@@ -24,7 +24,6 @@ def save_notes(notes):
     with open(NOTES_FILE, "w", encoding="utf-8") as f:
         json.dump(notes, f, ensure_ascii=False, indent=2)
 
-
 # 이미지를 base64 텍스트로 인코딩하는 함수
 def convert_image_to_base64(uploaded_file):
     if uploaded_file is not None:
@@ -37,7 +36,6 @@ if "main_mode" not in st.session_state:
 
 if "notes" not in st.session_state:
     st.session_state.notes = load_notes()
-
 
 
 # -----------------------------------------------------------------------------
@@ -53,53 +51,80 @@ st.markdown("""
     <style>
         /* 1. 메인 영역 상단 여백 최소화 */
         .block-container {
-            padding-top: 3.0rem !important;
+            padding-top: 2.0rem !important;
             padding-bottom: 1.5rem !important;
         }
         
-        /* 2. 제목 글자 크기 축소 */
+        /* 2. 제목 글자 크기 및 여백 축소 */
         div[data-testid="stMarkdownContainer"] h1 {
-            font-size: 1.5rem !important;
-            margin-top: 5px !important;
-            margin-bottom: 1.5rem !important;
+            font-size: 1.4rem !important;
+            margin-top: 0px !important;
+            margin-bottom: 0.8rem !important;
         }
 
-        /* 3. 좌측 파일 업로더 가로/세로 여백 조정 */
-        div[data-testid="stFileUploader"] {
-            width: 100% !important;
-            padding: 0px !important;
-            margin-bottom: 0.5rem !important;
-        }
-        div[data-testid="stFileUploader"] section {
-            padding: 6px 8px !important;
-        }
-
-        /* 4. 좌측 사이드바 전체 폭 (280px) */
+        /* 3. 좌측 사이드바 폭 및 수직 수평 간격 대폭 축소 */
         section[data-testid="stSidebar"] {
             width: 280px !important;
         }
+        
+        section[data-testid="stSidebar"] div[data-testid="stVerticalBlock"] {
+            gap: 0.2rem !important;
+            padding-top: 0.2rem !important;
+        }
 
-        /* 5. 기본 버튼 서식 */
+        section[data-testid="stSidebar"] div[data-testid="stElementContainer"] {
+            margin-bottom: 2px !important;
+        }
+
+        section[data-testid="stSidebar"] hr {
+            margin-top: 0.4rem !important;
+            margin-bottom: 0.4rem !important;
+        }
+
+        /* 4. 파일 업로더 너비 100% 확대, 높이 단축 및 여백 최소화 */
+        div[data-testid="stFileUploader"] {
+            width: 100% !important;
+            padding: 0px !important;
+            margin-bottom: 0.2rem !important;
+        }
+
+        div[data-testid="stFileUploader"] section[data-testid="stFileUploaderDropzone"] {
+            padding: 4px 8px !important;
+            min-height: 48px !important;
+            width: 100% !important;
+        }
+
+        div[data-testid="stFileUploader"] section[data-testid="stFileUploaderDropzone"] > div {
+            padding-top: 0px !important;
+            padding-bottom: 0px !important;
+        }
+
+        /* 5. 버튼 스타일 정의 (사이드바 버튼 너비 100% 및 밀도 높이기) */
         div.stButton > button {
             display: inline-flex !important;
             justify-content: center !important;
             align-items: center !important;
             text-align: center !important;
-            margin-top: 5px !important;
-            margin-bottom: 5px !important;
-            padding: 6px 16px !important;
+            margin-top: 2px !important;
+            margin-bottom: 2px !important;
+            padding: 4px 12px !important;
+            min-height: 32px !important;
+            height: 32px !important;
         }
+        
+        section[data-testid="stSidebar"] div.stButton > button {
+            width: 100% !important;
+            font-size: 0.85rem !important;
+        }
+
         div.stButton > button p {
             margin: 0 !important;
             padding: 0 !important;
             text-align: center !important;
+            font-size: 0.85rem !important;
         }
 
-        /* 6. 사이드바 필터 간격 축소 */
-        section[data-testid="stSidebar"] div[data-testid="stVerticalBlock"] {
-            gap: 0.25rem !important;
-        }
-
+        /* 6. 사이드바 필터 라벨 및 드롭다운 밀도 조정 */
         section[data-testid="stSidebar"] label {
             text-align: left !important;
             justify-content: flex-start !important;
@@ -107,66 +132,60 @@ st.markdown("""
             padding-bottom: 0px !important;
             padding-top: 0px !important;
         }
+        
         section[data-testid="stSidebar"] label p {
-            font-size: 0.88rem !important;
+            font-size: 0.82rem !important;
             font-weight: 600 !important;
             margin: 0 !important;
             padding: 0 !important;
             text-align: left !important;
         }
 
-        section[data-testid="stSidebar"] div[data-testid="stSelectbox"] {
-            margin-bottom: 6px !important;
+        section[data-testid="stSidebar"] div[data-testid="stSelectbox"],
+        section[data-testid="stSidebar"] div[data-testid="stMultiSelect"],
+        section[data-testid="stSidebar"] div[data-testid="stTextInput"] {
+            margin-bottom: 4px !important;
             margin-top: 0px !important;
             padding: 0px !important;
         }
 
         section[data-testid="stSidebar"] div[data-baseweb="select"] > div {
             min-height: 32px !important;
-            height: 32px !important;
             padding-top: 0px !important;
             padding-bottom: 0px !important;
-            padding-left: 8px !important;
-            padding-right: 8px !important;
+            padding-left: 6px !important;
+            padding-right: 6px !important;
             display: flex !important;
             align-items: center !important;
         }
 
         section[data-testid="stSidebar"] div[data-baseweb="select"] * {
-            font-size: 0.85rem !important;
+            font-size: 0.82rem !important;
             line-height: 1.1 !important;
         }
 
         section[data-testid="stSidebar"] div[data-testid="stCheckbox"] {
-            margin-top: 4px !important;
-            margin-bottom: 4px !important;
+            margin-top: 2px !important;
+            margin-bottom: 2px !important;
         }
 
         /* 7. 상세 페이지 문제 박스와 하단 탭 사이 간격 */
         div[data-testid="stTabs"] {
-            margin-top: 1.5rem !important;
+            margin-top: 1.0rem !important;
         }
 
-        /* 8. 탭 상단 우측 버튼 동일 사이즈 및 우측 밀착 정렬 */
+        /* 8. 탭 상단 우측 버튼 정렬 */
         div[data-testid="stTabs"] div[data-testid="stHorizontalBlock"] > div[data-testid="column"]:nth-child(2) div[data-testid="stButton"],
         div[data-testid="stTabs"] div[data-testid="stHorizontalBlock"] > div[data-testid="column"]:nth-child(3) div[data-testid="stButton"] {
             display: flex !important;
             width: 100% !important;
         }
+        
         div[data-testid="stTabs"] div[data-testid="stButton"] > button {
             width: 100% !important;
         }
 
-        /* 9. 중요도 설정 등 일반 Selectbox 라벨 여백 축소 */
-        div[data-testid="stSelectbox"] label {
-            margin-bottom: 2px !important;
-            padding-bottom: 0px !important;
-        }
-        div[data-testid="stSelectbox"] label p {
-            margin-bottom: 0px !important;
-        }
-        
-        /* 10. 마크다운 서식 적용 화면 가독성 및 계층별 들여쓰기/번호 스타일링 */
+        /* 9. 본문 마크다운 서식 조정 */
         div[data-testid="stMarkdownContainer"] p {
             line-height: 1.85 !important;
             margin-bottom: 0.9em !important;
@@ -174,67 +193,24 @@ st.markdown("""
             font-size: 1.02rem !important;
         }
 
-        /* 1계층 순서 있는 목록 (1. 2. 3.) */
         div[data-testid="stMarkdownContainer"] ol {
             list-style-type: decimal !important;
             margin-left: 1.8em !important;
             padding-left: 0.2em !important;
             margin-bottom: 0.8em !important;
         }
-        /* 2계층 순서 있는 목록 (A. B. C.) */
-        div[data-testid="stMarkdownContainer"] ol ol {
-            list-style-type: upper-alpha !important;
-            margin-left: 1.6em !important;
-            margin-top: 0.3em !important;
-            margin-bottom: 0.5em !important;
-        }
-        /* 3계층 순서 있는 목록 (a. b. c.) */
-        div[data-testid="stMarkdownContainer"] ol ol ol {
-            list-style-type: lower-alpha !important;
-            margin-left: 1.6em !important;
-        }
-
-        /* 1계층 순서 없는 목록 (● 채운 원) */
+        
         div[data-testid="stMarkdownContainer"] ul {
             list-style-type: disc !important;
             margin-left: 1.8em !important;
             padding-left: 0.2em !important;
             margin-bottom: 0.8em !important;
         }
-        /* 2계층 순서 없는 목록 (○ 빈 원) */
-        div[data-testid="stMarkdownContainer"] ul ul {
-            list-style-type: circle !important;
-            margin-left: 1.6em !important;
-            margin-top: 0.3em !important;
-            margin-bottom: 0.5em !important;
-        }
-        /* 3계층 순서 없는 목록 (■ 사각형) */
-        div[data-testid="stMarkdownContainer"] ul ul ul {
-            list-style-type: square !important;
-            margin-left: 1.6em !important;
-        }
 
-        /* 리스트 항목 높이 및 여백 */
         div[data-testid="stMarkdownContainer"] li {
             line-height: 1.8 !important;
             margin-bottom: 0.4em !important;
             word-break: keep-all !important;
-        }
-        
-        /* 제목 스타일링 */
-        div[data-testid="stMarkdownContainer"] h2 {
-            margin-top: 1.6em !important;
-            margin-bottom: 0.7em !important;
-            border-bottom: 1px solid #4a5568;
-            padding-bottom: 0.3em;
-        }
-        div[data-testid="stMarkdownContainer"] h3 {
-            margin-top: 1.3em !important;
-            margin-bottom: 0.5em !important;
-        }
-        div[data-testid="stMarkdownContainer"] h4 {
-            margin-top: 1.0em !important;
-            margin-bottom: 0.4em !important;
         }
     </style>
 """, unsafe_allow_html=True)
@@ -282,16 +258,12 @@ def format_readable_text(text):
             
     return "\n".join(formatted_lines)
 
-if "user_data" not in st.session_state:
+if "user_data" not in st.session_state or not isinstance(st.session_state.user_data, dict):
     st.session_state.user_data = load_user_data()
 if "show_detail" not in st.session_state:
     st.session_state.show_detail = False
 if "current_q" not in st.session_state:
     st.session_state.current_q = None
-
-# user_data가 세션에 없거나, dict가 아니면 빈 딕셔너리로 초기화
-if "user_data" not in st.session_state or not isinstance(st.session_state.user_data, dict):
-    st.session_state.user_data = {}
 
 # -----------------------------------------------------------------------------
 # 2. 데이터 불러오기
@@ -319,87 +291,80 @@ def load_excel_data(uploaded_file):
             })
     return df
 
-uploaded_file = st.sidebar.file_uploader("기출문제 엑셀 파일", type=['xlsx', 'xls'])
-df = load_excel_data(uploaded_file)
+# -----------------------------------------------------------------------------
+# 3. 사이드바 레이아웃 (파일 업로드 -> 메인 모드 버튼 -> 검색 및 필터)
+# -----------------------------------------------------------------------------
+with st.sidebar:
+    # 1. 상단 100% 폭 파일 업로더
+    uploaded_file = st.file_uploader("📂 엑셀 파일 업로드", type=['xlsx', 'xls'])
+    
+    # 2. 모드 전환 버튼 (기출문제 / 학습노트)
+    col_nav1, col_nav2 = st.columns(2)
+    with col_nav1:
+        btn_exam_type = "primary" if st.session_state.main_mode == "exam" else "secondary"
+        if st.button("📝 기출문제", use_container_width=True, type=btn_exam_type, key="btn_nav_exam"):
+            st.session_state.main_mode = "exam"
+            st.session_state.show_detail = False
+            st.rerun()
+
+    with col_nav2:
+        btn_note_type = "primary" if st.session_state.main_mode == "note" else "secondary"
+        if st.button("📖 학습노트", use_container_width=True, type=btn_note_type, key="btn_nav_note"):
+            st.session_state.main_mode = "note"
+            st.rerun()
+
+    st.markdown("---")
+    st.markdown("**🔍 문제 필터링**")
+
+    # 3. 키워드 검색 및 필터 컨트롤 (간격 최소화)
+    search_keyword = st.text_input("문제 키워드 검색", placeholder="검색어 입력...", label_visibility="collapsed")
+
+    df = load_excel_data(uploaded_file)
+
+    # 데이터 전처리
+    for q in df['문제']:
+        if q not in st.session_state.user_data:
+            st.session_state.user_data[q] = {
+                'clicks': 0, 'importance': 3, 
+                'concept': '', 'answer': '', 'extra': '',
+                'image_notes': []
+            }
+        elif 'image_notes' not in st.session_state.user_data[q]:
+            st.session_state.user_data[q]['image_notes'] = []
+
+    df['조회수'] = df['문제'].apply(lambda x: st.session_state.user_data[x]['clicks'])
+    df['중요도(별)'] = df['문제'].apply(lambda x: "⭐" * st.session_state.user_data[x]['importance'])
+
+    rounds = sorted(list(df['회차'].unique()), reverse=True)
+    unique_periods = sorted(list(df['교시'].unique()))
+    periods = [str(p) for p in unique_periods]
+    categories = sorted(list(df['분류'].unique()))
+
+    sel_rounds = st.multiselect("회차 선택 (복수)", options=rounds, default=[])
+    sel_periods = st.multiselect("교시 선택 (복수)", options=periods, default=[])
+    sel_categories = st.multiselect("분류 선택 (복수)", options=categories, default=[])
+
+    sort_by_clicks = st.checkbox("자주 본 문제 순 정렬 (조회수 ⇧)")
 
 # -----------------------------------------------------------------------------
-# 3. 데이터 전처리 및 학습 데이터 매핑
+# 4. 필터링 조건 적용
 # -----------------------------------------------------------------------------
-for q in df['문제']:
-    if q not in st.session_state.user_data:
-        st.session_state.user_data[q] = {
-            'clicks': 0, 'importance': 3, 
-            'concept': '', 'answer': '', 'extra': '',
-            'image_notes': []
-        }
-    elif 'image_notes' not in st.session_state.user_data[q]:
-        st.session_state.user_data[q]['image_notes'] = []
-
-df['조회수'] = df['문제'].apply(lambda x: st.session_state.user_data[x]['clicks'])
-df['중요도(별)'] = df['문제'].apply(lambda x: "⭐" * st.session_state.user_data[x]['importance'])
-
-# -----------------------------------------------------------------------------
-# 4. 좌측 화면 (사이드바 필터링 - 복수 선택 및 검색어 기능 추가)
-# -----------------------------------------------------------------------------
-
-# =============================================================================
-# [추가] 1. 사이드바 메인 모드 전환 버튼 (기출문제 / 학습노트 나란히 배치)
-# =============================================================================
-col_nav1, col_nav2 = st.sidebar.columns(2)
-with col_nav1:
-    btn_exam_type = "primary" if st.session_state.main_mode == "exam" else "secondary"
-    if st.sidebar.button("📝 기출문제", use_container_width=True, type=btn_exam_type, key="btn_nav_exam"):
-        st.session_state.main_mode = "exam"
-        st.session_state.show_detail = False
-        st.rerun()
-
-with col_nav2:
-    btn_note_type = "primary" if st.session_state.main_mode == "note" else "secondary"
-    if st.sidebar.button("📖 학습노트", use_container_width=True, type=btn_note_type, key="btn_nav_note"):
-        st.session_state.main_mode = "note"
-        st.rerun()
-
-st.sidebar.markdown("---")
-st.sidebar.header("🔍 문제 필터링")
-
-# [추가] 키워드 검색어 입력창
-search_keyword = st.sidebar.text_input("🔍 문제 키워드 검색", placeholder="검색어를 입력하세요...")
-
-# 드롭다운 옵션 목록 생성
-rounds = sorted(list(df['회차'].unique()), reverse=True)
-unique_periods = sorted(list(df['교시'].unique()))
-periods = [str(p) for p in unique_periods]
-categories = sorted(list(df['분류'].unique()))
-
-# selectbox -> multiselect
-sel_rounds = st.sidebar.multiselect("회차 선택 (복수)", options=rounds, default=[])
-sel_periods = st.sidebar.multiselect("교시 선택 (복수)", options=periods, default=[])
-sel_categories = st.sidebar.multiselect("분류 선택 (복수)", options=categories, default=[])
-
-sort_by_clicks = st.sidebar.checkbox("자주 본 문제 순으로 정렬 (조회수 ⇧)")
-
 filtered_df = df.copy()
 
-# 0) 키워드 검색어 필터링 (선택/입력 항목이 있을 경우)
 if search_keyword.strip():
-    # '문제' 컬럼에서 검색어가 포함된 행 필터링 (대소문자 무시, 결측치 무시)
     filtered_df = filtered_df[
         filtered_df['문제'].astype(str).str.contains(search_keyword.strip(), case=False, na=False)
     ]
 
-# 1) 회차 복수 필터링
 if sel_rounds:
     filtered_df = filtered_df[filtered_df['회차'].isin(sel_rounds)]
 
-# 2) 교시 복수 필터링
 if sel_periods:
     filtered_df = filtered_df[filtered_df['교시'].astype(str).isin(sel_periods)]
 
-# 3) 분류 복수 필터링
 if sel_categories:
     filtered_df = filtered_df[filtered_df['분류'].isin(sel_categories)]
 
-# 4) 조회수 정렬
 if sort_by_clicks:
     filtered_df = filtered_df.sort_values(by='조회수', ascending=False)
     
