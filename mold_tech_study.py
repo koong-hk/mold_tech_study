@@ -804,12 +804,12 @@ elif st.session_state.main_mode == "note":
             else:
                 st.info("작성된 노트 내용이 없습니다.")
 
-            # 3. 첨부 이미지 표시
+            # 3. 첨부 이미지 표시 (💡 원본 크기로 표시되도록 옵션 수정)
             if note.get("image_base64"):
                 st.markdown("---")
                 st.markdown("**🖼️ 첨부 이미지**")
                 img_bytes = base64.b64decode(note["image_base64"])
-                st.image(img_bytes, use_container_width=True)
+                st.image(img_bytes)  # use_container_width=True 옵션을 제거하여 원본 사이즈 유지
 
             # 4. 웹 링크 표시
             if note.get("link"):
