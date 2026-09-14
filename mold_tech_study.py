@@ -819,7 +819,7 @@ elif st.session_state.main_mode == "note":
             if kw in n["title"].lower() or kw in n["content"].lower() or kw in n["category"].lower()
         ]
 
-    st.subheader(f"📋 저장된 노트 ({len(filtered_notes)}개)")
+    st.subheader(f"📋 Note List ({len(filtered_notes)}개)")
 
     if not filtered_notes:
         st.info("등록된 학습노트가 없거나 검색 결과가 없습니다.")
