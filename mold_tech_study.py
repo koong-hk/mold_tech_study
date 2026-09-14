@@ -883,20 +883,37 @@ elif st.session_state.main_mode == "note":
     # [화면 3] 노트 목록 화면 (List View)
     # =========================================================================
     else:
-        st.markdown("<h1>📖 학습노트 관리</h1>", unsafe_allow_html=True)
-        st.write("나만의 금형기술사 서브노트 및 개념 정리 노트 목록입니다.")
-
-        # 💡 [버튼 텍스트 좌측 정렬 스타일 적용]
+        # 💡 [CSS] 상단 헤더 고정 느낌 부여 및 목록 줄 간격/높이 대폭 축소
         st.markdown("""
             <style>
+            /* 버튼 좌측 정렬 및 여백/높이 밀도 높이기 */
             div[data-testid="stColumn"] button {
                 text-align: left !important;
                 justify-content: flex-start !important;
+                padding-top: 2px !important;
+                padding-bottom: 2px !important;
+                min-height: 32px !important;
+                height: 32px !important;
+                font-size: 0.88rem !important;
+            }
+            
+            /* 수평 블록(노트 줄) 간격 축소 */
+            div[data-testid="stHorizontalBlock"] {
+                gap: 0.4rem !important;
+                align-items: center !important;
+            }
+
+            /* Streamlit 요소 하단 여백 제거하여 줄 간격 좁히기 */
+            div[data-testid="stElementContainer"] {
+                margin-bottom: 0px !important;
             }
             </style>
         """, unsafe_allow_html=True)
 
-        # 상단 컨트롤 바 (검색 / 새 노트 작성 토글 / 전체 저장)
+        st.markdown("<h1 style='margin-bottom: 0.5rem;'>📖 학습노트 관리</h1>", unsafe_allow_html=True)
+        st.write("나만의 금형기술사 서브노트 및 개념 정리 노트 목록입니다.")
+
+        # 1. 컨트롤 바 (검색 / 새 노트 작성 / 전체 저장)
         col_search, col_btn1, col_btn2 = st.columns([3, 1.2, 1.2])
         with col_search:
             note_search_kw = st.text_input("🔍 노트 검색", placeholder="제목, 분류, 내용 키워드 입력", label_visibility="collapsed")
@@ -907,7 +924,7 @@ elif st.session_state.main_mode == "note":
                 save_notes(st.session_state.notes)
                 st.toast("학습노트가 성공적으로 저장되었습니다!", icon="✅")
 
-        # 새 노트 작성 양식
+        # 새 노트 작성 양식 (체크 시에만 확장)
         if show_create_form:
             with st.expander("📝 새 학습노트 등록", expanded=True):
                 with st.form(key="new_note_form", clear_on_submit=True):
@@ -942,8 +959,6 @@ elif st.session_state.main_mode == "note":
                             st.success("새 학습노트가 추가되었습니다!")
                             st.rerun()
 
-        st.markdown("---")
-
         # 검색 필터 적용
         filtered_notes = st.session_state.notes
         if note_search_kw.strip():
@@ -953,38 +968,47 @@ elif st.session_state.main_mode == "note":
                 if kw in n.get("title", "").lower() or kw in n.get("content", "").lower() or kw in n.get("category", "").lower()
             ]
 
-        st.subheader(f"📋 저장된 노트 ({len(filtered_notes)}개)")
+        # 💡 [고정 상단 헤더 줄] 목록 맨 위에 컬럼 제목을 명확히 표시
+        st.markdown("<div style='margin-top: 15px;'></div>", unsafe_allow_html=True)
+        h_col1, h_col2, h_col3 = st.columns([3, 7, 2.5])
+        with h_col1:
+            st.markdown("<div style='font-weight: bold; color: #444; font-size: 0.85rem; padding-left: 4px;'>📂 분류 (3)</div>", unsafe_allow_html=True)
+        with h_col2:
+            st.markdown("<div style='font-weight: bold; color: #444; font-size: 0.85rem; padding-left: 4px;'>📌 노트 제목 (7)</div>", unsafe_allow_html=True)
+        with h_col3:
+            st.markdown("<div style='font-weight: bold; color: #444; font-size: 0.85rem; text-align: right; padding-right: 4px;'>🕒 수정일</div>", unsafe_allow_html=True)
+        
+        st.markdown("<hr style='margin: 4px 0 6px 0; border: none; border-top: 2px solid #333;'/>", unsafe_allow_html=True)
 
+        # 💡 [컴팩트 노트 목록]
         if not filtered_notes:
             st.info("등록된 학습노트가 없거나 검색 결과가 없습니다.")
         else:
-            # 💡 [수정 포인트] 분류(3) : 제목(7) 비율 분리 및 좌측 정렬 적용
             for note in filtered_notes:
                 has_img = "🖼️ " if note.get("image_base64") else ""
                 has_link = "🔗 " if note.get("link") else ""
                 
-                # 분류(3) : 제목(7) : 수정일(2.5) 비율 배치
                 col_cat, col_title, col_date = st.columns([3, 7, 2.5])
                 
-                # 1. 분류 영역 (비율 3)
+                # 1. 분류 영역
                 with col_cat:
-                    if st.button(f"📂 {note['category']}", key=f"note_cat_{note['id']}", use_container_width=True):
+                    if st.button(f"{note['category']}", key=f"note_cat_{note['id']}", use_container_width=True):
                         st.session_state.selected_note_id = note["id"]
                         st.session_state.note_sub_mode = "detail"
                         st.rerun()
                 
-                # 2. 제목 영역 (비율 7)
+                # 2. 제목 영역
                 with col_title:
-                    if st.button(f"📌 {note['title']} {has_img}{has_link}", key=f"note_title_{note['id']}", use_container_width=True):
+                    if st.button(f"{note['title']} {has_img}{has_link}", key=f"note_title_{note['id']}", use_container_width=True):
                         st.session_state.selected_note_id = note["id"]
                         st.session_state.note_sub_mode = "detail"
                         st.rerun()
                 
-                # 3. 우측 수정 날짜 영역
+                # 3. 수정일 영역 (32px 높이에 맞춰 세로 중앙 정렬)
                 with col_date:
                     st.markdown(
-                        f"<div style='text-align: right; line-height: 38px; color: #777; font-size: 0.85rem;'>"
-                        f"수정: {note['updated_at']}"
+                        f"<div style='text-align: right; line-height: 32px; color: #666; font-size: 0.82rem;'>"
+                        f"{note['updated_at']}"
                         f"</div>",
                         unsafe_allow_html=True
                     )
