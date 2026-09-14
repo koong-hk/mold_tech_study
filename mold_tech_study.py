@@ -304,52 +304,40 @@ df['조회수'] = df['문제'].apply(lambda x: st.session_state.user_data[x]['cl
 df['중요도(별)'] = df['문제'].apply(lambda x: "⭐" * st.session_state.user_data[x]['importance'])
 
 # -----------------------------------------------------------------------------
-# 4. 좌측 화면 (사이드바 필터링)
+# 4. 좌측 화면 (사이드바 필터링 - 복수 선택 기능 적용)
 # -----------------------------------------------------------------------------
-if st.session_state["view_mode"] == "기출문제":
-        st.subheader("🔍 기출문제 검색 및 필터")
-        
-        # 1. 검색어 입력
-        q_search_query = st.text_input("문제 검색", placeholder="검색어를 입력하세요...", key="q_search_input")
-        
-        # 2. 필터에 들어갈 옵션 목록 추출 (안전한 get 사용)
-        all_rounds = sorted(list(set(q.get("round", "") for q in st.session_state["questions"] if isinstance(q, dict) and q.get("round"))))
-        all_periods = sorted(list(set(q.get("period", "") for q in st.session_state["questions"] if isinstance(q, dict) and q.get("period"))))
-        all_categories = sorted(list(set(q.get("category", "기타") for q in st.session_state["questions"] if isinstance(q, dict))))
+st.sidebar.header("🔍 문제 필터링")
 
-        # -----------------------------------------------------------
-        # [수정] st.selectbox -> st.multiselect (복수 선택 가능)
-        # -----------------------------------------------------------
-        selected_rounds = st.multiselect("회차 선택 (복수)", options=all_rounds, default=[])
-        selected_periods = st.multiselect("교시 선택 (복수)", options=all_periods, default=[])
-        selected_categories = st.multiselect("분류 선택 (복수)", options=all_categories, default=[])
+# 드롭다운 옵션 목록 생성
+rounds = sorted(list(df['회차'].unique()), reverse=True)
+unique_periods = sorted(list(df['교시'].unique()))
+periods = [str(p) for p in unique_periods]
+categories = sorted(list(df['분류'].unique()))
 
-        st.markdown("---")
-        
-        # -----------------------------------------------------------
-        # [수정] 복수 선택 필터링 로직 (선택된 값이 있을 때만 filter)
-        # -----------------------------------------------------------
-        filtered_qs = st.session_state["questions"]
-        
-        if selected_rounds:
-            filtered_qs = [q for q in filtered_qs if isinstance(q, dict) and q.get("round") in selected_rounds]
-            
-        if selected_periods:
-            filtered_qs = [q for q in filtered_qs if isinstance(q, dict) and q.get("period") in selected_periods]
-            
-        if selected_categories:
-            filtered_qs = [q for q in filtered_qs if isinstance(q, dict) and q.get("category") in selected_categories]
-            
-        if q_search_query:
-            query_lower = q_search_query.lower()
-            filtered_qs = [
-                q for q in filtered_qs 
-                if isinstance(q, dict) and (
-                    query_lower in q.get("title", "").lower() or 
-                    query_lower in q.get("category", "").lower()
-                )
-            ]
+# selectbox -> multiselect 로 변경
+sel_rounds = st.sidebar.multiselect("회차 선택 (복수)", options=rounds, default=[])
+sel_periods = st.sidebar.multiselect("교시 선택 (복수)", options=periods, default=[])
+sel_categories = st.sidebar.multiselect("분류 선택 (복수)", options=categories, default=[])
 
+sort_by_clicks = st.sidebar.checkbox("자주 본 문제 순으로 정렬 (조회수 ⇧)")
+
+filtered_df = df.copy()
+
+# 1) 회차 복수 필터링 (선택 항목이 있을 경우에만 필터 적용)
+if sel_rounds:
+    filtered_df = filtered_df[filtered_df['회차'].isin(sel_rounds)]
+
+# 2) 교시 복수 필터링
+if sel_periods:
+    filtered_df = filtered_df[filtered_df['교시'].astype(str).isin(sel_periods)]
+
+# 3) 분류 복수 필터링
+if sel_categories:
+    filtered_df = filtered_df[filtered_df['분류'].isin(sel_categories)]
+
+if sort_by_clicks:
+    filtered_df = filtered_df.sort_values(by='조회수', ascending=False)
+    
 # -----------------------------------------------------------------------------
 # 5. 우측 화면 (리스트 뷰 vs 상세 뷰)
 # -----------------------------------------------------------------------------
