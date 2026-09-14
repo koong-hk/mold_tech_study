@@ -306,40 +306,49 @@ df['중요도(별)'] = df['문제'].apply(lambda x: "⭐" * st.session_state.use
 # -----------------------------------------------------------------------------
 # 4. 좌측 화면 (사이드바 필터링)
 # -----------------------------------------------------------------------------
-st.sidebar.header("🔍 문제 필터링")
+if st.session_state["view_mode"] == "기출문제":
+        st.subheader("🔍 기출문제 검색 및 필터")
+        
+        # 1. 검색어 입력
+        q_search_query = st.text_input("문제 검색", placeholder="검색어를 입력하세요...", key="q_search_input")
+        
+        # 2. 필터에 들어갈 옵션 목록 추출 (안전한 get 사용)
+        all_rounds = sorted(list(set(q.get("round", "") for q in st.session_state["questions"] if isinstance(q, dict) and q.get("round"))))
+        all_periods = sorted(list(set(q.get("period", "") for q in st.session_state["questions"] if isinstance(q, dict) and q.get("period"))))
+        all_categories = sorted(list(set(q.get("category", "기타") for q in st.session_state["questions"] if isinstance(q, dict))))
 
-rounds = ["전체"] + sorted(list(df['회차'].unique()), reverse=True)
+        # -----------------------------------------------------------
+        # [수정] st.selectbox -> st.multiselect (복수 선택 가능)
+        # -----------------------------------------------------------
+        selected_rounds = st.multiselect("회차 선택 (복수)", options=all_rounds, default=[])
+        selected_periods = st.multiselect("교시 선택 (복수)", options=all_periods, default=[])
+        selected_categories = st.multiselect("분류 선택 (복수)", options=all_categories, default=[])
 
-# 교시 선택 옵션: 전체, 2~4교시 통합 옵션, 개별 교시
-unique_periods = sorted(list(df['교시'].unique()))
-periods = ["전체", "2~4교시"] + [str(p) for p in unique_periods]
-
-categories = ["전체"] + sorted(list(df['분류'].unique()))
-
-sel_round = st.sidebar.selectbox("회차 선택", rounds)
-sel_period = st.sidebar.selectbox("교시 선택", periods)
-sel_category = st.sidebar.selectbox("분류 선택", categories)
-
-sort_by_clicks = st.sidebar.checkbox("자주 본 문제 순으로 정렬 (조회수 ⇧)")
-
-filtered_df = df.copy()
-
-# 1) 회차 필터링
-if sel_round != "전체":
-    filtered_df = filtered_df[filtered_df['회차'] == sel_round]
-
-# 2) 교시 필터링 (2~4교시 통합 필터 적용)
-if sel_period == "2~4교시":
-    filtered_df = filtered_df[filtered_df['교시'].astype(str).isin(["2", "3", "4"])]
-elif sel_period != "전체":
-    filtered_df = filtered_df[filtered_df['교시'].astype(str) == str(sel_period)]
-
-# 3) 분류 필터링
-if sel_category != "전체":
-    filtered_df = filtered_df[filtered_df['분류'] == sel_category]
-
-if sort_by_clicks:
-    filtered_df = filtered_df.sort_values(by='조회수', ascending=False)
+        st.markdown("---")
+        
+        # -----------------------------------------------------------
+        # [수정] 복수 선택 필터링 로직 (선택된 값이 있을 때만 filter)
+        # -----------------------------------------------------------
+        filtered_qs = st.session_state["questions"]
+        
+        if selected_rounds:
+            filtered_qs = [q for q in filtered_qs if isinstance(q, dict) and q.get("round") in selected_rounds]
+            
+        if selected_periods:
+            filtered_qs = [q for q in filtered_qs if isinstance(q, dict) and q.get("period") in selected_periods]
+            
+        if selected_categories:
+            filtered_qs = [q for q in filtered_qs if isinstance(q, dict) and q.get("category") in selected_categories]
+            
+        if q_search_query:
+            query_lower = q_search_query.lower()
+            filtered_qs = [
+                q for q in filtered_qs 
+                if isinstance(q, dict) and (
+                    query_lower in q.get("title", "").lower() or 
+                    query_lower in q.get("category", "").lower()
+                )
+            ]
 
 # -----------------------------------------------------------------------------
 # 5. 우측 화면 (리스트 뷰 vs 상세 뷰)
