@@ -111,14 +111,19 @@ def load_data(file_path, default):
     if os.path.exists(file_path):
         try:
             with open(file_path, "r", encoding="utf-8") as f:
-                return json.load(f)
+                data = json.load(f)
+                if isinstance(data, list):
+                    return data
         except Exception:
             return default
     return default
 
 def save_data(file_path, data):
-    with open(file_path, "w", encoding="utf-8") as f:
-        json.dump(data, f, ensure_ascii=False, indent=2)
+    try:
+        with open(file_path, "w", encoding="utf-8") as f:
+            json.dump(data, f, ensure_ascii=False, indent=2)
+    except Exception as e:
+        st.error(f"데이터 저장 실패: {e}")
 
 def image_to_base64(uploaded_file):
     if uploaded_file is not None:
@@ -127,20 +132,39 @@ def image_to_base64(uploaded_file):
         return f"data:{uploaded_file.type};base64,{base64_str}"
     return None
 
-# 세션 초기화 및 ID 자동 보완 (KeyError 방지)
+# ------------------------------------------
+# 세션 초기화 및 데이터 유효성 정제 (안전 처리)
+# ------------------------------------------
 if "view_mode" not in st.session_state:
     st.session_state["view_mode"] = "기출문제"
 
 if "questions" not in st.session_state:
     loaded_qs = load_data(QUESTION_DATA_FILE, DEFAULT_QUESTIONS)
-    # 기존 JSON 파일에 id 키가 없는 경우 대비한 자동 ID 생성
-    for idx, q in enumerate(loaded_qs):
-        if "id" not in q or not q["id"]:
-            q["id"] = str(idx + 1)
-    st.session_state["questions"] = loaded_qs
+    valid_qs = []
+    
+    # 리스트 내부 항목이 딕셔너리(dict)인지 안전하게 검증
+    if isinstance(loaded_qs, list):
+        for idx, q in enumerate(loaded_qs):
+            if isinstance(q, dict):
+                if "id" not in q or not q["id"]:
+                    q["id"] = str(idx + 1)
+                valid_qs.append(q)
+                
+    if not valid_qs:
+        valid_qs = DEFAULT_QUESTIONS
+        
+    st.session_state["questions"] = valid_qs
 
 if "notes" not in st.session_state:
-    st.session_state["notes"] = load_data(NOTE_DATA_FILE, [])
+    loaded_notes = load_data(NOTE_DATA_FILE, [])
+    valid_notes = []
+    if isinstance(loaded_notes, list):
+        for idx, n in enumerate(loaded_notes):
+            if isinstance(n, dict):
+                if "id" not in n or not n["id"]:
+                    n["id"] = str(idx + 1)
+                valid_notes.append(n)
+    st.session_state["notes"] = valid_notes
 
 if "selected_q_id" not in st.session_state:
     if st.session_state["questions"]:
@@ -177,9 +201,9 @@ with st.sidebar:
         
         q_search_query = st.text_input("문제 검색", placeholder="검색어를 입력하세요...", key="q_search_input")
         
-        all_rounds = sorted(list(set(q.get("round", "") for q in st.session_state["questions"] if q.get("round"))))
-        all_periods = sorted(list(set(q.get("period", "") for q in st.session_state["questions"] if q.get("period"))))
-        all_categories = sorted(list(set(q.get("category", "기타") for q in st.session_state["questions"])))
+        all_rounds = sorted(list(set(q.get("round", "") for q in st.session_state["questions"] if isinstance(q, dict) and q.get("round"))))
+        all_periods = sorted(list(set(q.get("period", "") for q in st.session_state["questions"] if isinstance(q, dict) and q.get("period"))))
+        all_categories = sorted(list(set(q.get("category", "기타") for q in st.session_state["questions"] if isinstance(q, dict))))
 
         selected_rounds = st.multiselect("회차 선택 (복수)", options=all_rounds, default=[])
         selected_periods = st.multiselect("교시 선택 (복수)", options=all_periods, default=[])
