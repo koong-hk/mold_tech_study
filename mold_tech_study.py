@@ -67,7 +67,7 @@ def render_mini_calendar():
             if day == 0:
                 html += "<td style='width: 14.285%; padding: 2px 0;'></td>"
             elif day == today_day:
-                # 오늘 날짜 하이라이트 (중앙 정렬 완벽 적용)
+                # 오늘 날짜 하이라이트
                 html += f"""<td style='width: 14.285%; padding: 2px 0; text-align: center;'>
                     <span style='background-color: #ff4b4b; color: #ffffff; border-radius: 50%; width: 20px; height: 20px; line-height: 20px; display: inline-block; font-weight: bold; font-size: 0.72rem; margin: 0 auto;'>{day}</span>
                 </td>"""
@@ -160,6 +160,7 @@ st.markdown("""
             min-height: 32px !important;
             height: 32px !important;
             width: 100% !important;
+            border-radius: 8px !important; /* 버튼 모서리 라운드 고정 */
         }
         
         section[data-testid="stSidebar"] div.stButton > button {
@@ -220,19 +221,21 @@ st.markdown("""
             line-height: 1.1 !important;
         }
 
-        /* 7. D-Day 표시 박스 커스텀 (블랙 배경 & 흰색 글자) */
+        /* 7. D-Day 표시 박스 커스텀 (버튼과 라운드 및 높이 동일하게 통일) */
         .dday-box {
             background-color: #000000;
             color: #ffffff;
             font-weight: bold;
-            font-size: 0.92rem;
+            font-size: 0.88rem;
             line-height: 30px;
             text-align: center;
-            border-radius: 4px;
+            border-radius: 8px; /* 버튼과 동일한 라운드 수치 적용 */
             height: 32px;
             border: 1px solid #444444;
             width: 100%;
             box-sizing: border-box;
+            margin-top: 2px;
+            margin-bottom: 2px;
         }
     </style>
 """, unsafe_allow_html=True)
@@ -338,7 +341,7 @@ with st.sidebar:
     sort_by_clicks = st.checkbox("자주 본 문제 순 정렬 (조회수 ⇧)")
 
     # -------------------------------------------------------------------------
-    # 4. 사이드바 하단: 상단 필터 영역과 충분한 여백(Gap) 확보 및 구분선 배치
+    # 4. 사이드바 하단: 미니 달력 & D-Day 영역
     # -------------------------------------------------------------------------
     st.markdown("<div style='margin-top: 25px; border-top: 1px solid #333333; padding-top: 15px;'></div>", unsafe_allow_html=True)
     
@@ -359,8 +362,8 @@ with st.sidebar:
     else:
         d_day_str = "D-XX"
 
-    # 좌측 30% 설정 버튼 / 우측 70% D-Day 표시
-    col_d_btn, col_d_disp = st.columns([3, 7])
+    # gap="small" 옵션으로 버튼과 표시 상자 사이의 갭을 간결하게 감소
+    col_d_btn, col_d_disp = st.columns([35, 65], gap="small")
     
     with col_d_btn:
         if st.button("D-Day", use_container_width=True, key="btn_set_dday"):
