@@ -886,6 +886,16 @@ elif st.session_state.main_mode == "note":
         st.markdown("<h1>📖 학습노트 관리</h1>", unsafe_allow_html=True)
         st.write("나만의 금형기술사 서브노트 및 개념 정리 노트 목록입니다.")
 
+        # 💡 [버튼 텍스트 좌측 정렬 스타일 적용]
+        st.markdown("""
+            <style>
+            div[data-testid="stColumn"] button {
+                text-align: left !important;
+                justify-content: flex-start !important;
+            }
+            </style>
+        """, unsafe_allow_html=True)
+
         # 상단 컨트롤 바 (검색 / 새 노트 작성 토글 / 전체 저장)
         col_search, col_btn1, col_btn2 = st.columns([3, 1.2, 1.2])
         with col_search:
@@ -948,22 +958,30 @@ elif st.session_state.main_mode == "note":
         if not filtered_notes:
             st.info("등록된 학습노트가 없거나 검색 결과가 없습니다.")
         else:
-            # 💡 [수정 포인트] 컬럼 분리로 왼쪽은 제목 버튼, 오른쪽 끝은 수정 날짜 정렬
+            # 💡 [수정 포인트] 분류(3) : 제목(7) 비율 분리 및 좌측 정렬 적용
             for note in filtered_notes:
                 has_img = "🖼️ " if note.get("image_base64") else ""
                 has_link = "🔗 " if note.get("link") else ""
-                btn_label = f"📌 [{note['category']}] {note['title']} {has_img}{has_link}"
                 
-                col_note_btn, col_note_date = st.columns([7.5, 2.5])
+                # 분류(3) : 제목(7) : 수정일(2.5) 비율 배치
+                col_cat, col_title, col_date = st.columns([3, 7, 2.5])
                 
-                with col_note_btn:
-                    if st.button(btn_label, key=f"note_item_{note['id']}", use_container_width=True):
+                # 1. 분류 영역 (비율 3)
+                with col_cat:
+                    if st.button(f"📂 {note['category']}", key=f"note_cat_{note['id']}", use_container_width=True):
                         st.session_state.selected_note_id = note["id"]
                         st.session_state.note_sub_mode = "detail"
                         st.rerun()
-                        
-                with col_note_date:
-                    # 버튼과 높이를 맞추고 우측 정렬 적용
+                
+                # 2. 제목 영역 (비율 7)
+                with col_title:
+                    if st.button(f"📌 {note['title']} {has_img}{has_link}", key=f"note_title_{note['id']}", use_container_width=True):
+                        st.session_state.selected_note_id = note["id"]
+                        st.session_state.note_sub_mode = "detail"
+                        st.rerun()
+                
+                # 3. 우측 수정 날짜 영역
+                with col_date:
                     st.markdown(
                         f"<div style='text-align: right; line-height: 38px; color: #777; font-size: 0.85rem;'>"
                         f"수정: {note['updated_at']}"
