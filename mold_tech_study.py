@@ -9,6 +9,7 @@ from datetime import datetime, date, timezone, timedelta
 import base64
 
 NOTES_FILE = "notes.json"
+USER_DATA_FILE = "user_study_data.json"
 
 # 한국 표준시(KST: UTC+9) 기준 오늘 날짜 구하기 함수
 def get_kst_today():
@@ -29,6 +30,21 @@ def load_notes():
 def save_notes(notes):
     with open(NOTES_FILE, "w", encoding="utf-8") as f:
         json.dump(notes, f, ensure_ascii=False, indent=2)
+
+# 사용자 데이터 로드 함수
+def load_user_data():
+    if os.path.exists(USER_DATA_FILE):
+        try:
+            with open(USER_DATA_FILE, 'r', encoding='utf-8') as f:
+                return json.load(f)
+        except Exception:
+            return {}
+    return {}
+
+# 사용자 데이터 저장 함수
+def save_user_data(data):
+    with open(USER_DATA_FILE, 'w', encoding='utf-8') as f:
+        json.dump(data, f, ensure_ascii=False, indent=4)
 
 # 이미지를 base64 텍스트로 인코딩하는 함수
 def convert_image_to_base64(uploaded_file):
@@ -83,15 +99,21 @@ def render_mini_calendar():
     html += "</tbody></table></div>"
     return html
 
-# 세션 상태 초기화
+# -----------------------------------------------------------------------------
+# 세션 상태 및 사용자 데이터 초기화
+# -----------------------------------------------------------------------------
+if "user_data" not in st.session_state or not isinstance(st.session_state.user_data, dict):
+    st.session_state.user_data = load_user_data()
+
 if "main_mode" not in st.session_state:
     st.session_state.main_mode = "exam"
 
 if "notes" not in st.session_state:
     st.session_state.notes = load_notes()
 
+# 저장된 파일에서 d_day_target을 불러와 세션 상태에 저장 (미설정 시 None)
 if "d_day_target" not in st.session_state:
-    st.session_state.d_day_target = None
+    st.session_state.d_day_target = st.session_state.user_data.get("_d_day_target", None)
 
 if "show_d_day_picker" not in st.session_state:
     st.session_state.show_d_day_picker = False
@@ -160,7 +182,7 @@ st.markdown("""
             min-height: 32px !important;
             height: 32px !important;
             width: 100% !important;
-            border-radius: 8px !important; /* 버튼 모서리 라운드 고정 */
+            border-radius: 8px !important;
         }
         
         section[data-testid="stSidebar"] div.stButton > button {
@@ -221,7 +243,7 @@ st.markdown("""
             line-height: 1.1 !important;
         }
 
-        /* 7. D-Day 표시 박스 커스텀 (버튼과 라운드 및 높이 동일하게 통일) */
+        /* 7. D-Day 표시 박스 커스텀 */
         .dday-box {
             background-color: #000000;
             color: #ffffff;
@@ -229,7 +251,7 @@ st.markdown("""
             font-size: 0.88rem;
             line-height: 30px;
             text-align: center;
-            border-radius: 8px; /* 버튼과 동일한 라운드 수치 적용 */
+            border-radius: 8px;
             height: 32px;
             border: 1px solid #444444;
             width: 100%;
@@ -240,20 +262,6 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-USER_DATA_FILE = "user_study_data.json"
-
-def load_user_data():
-    if os.path.exists(USER_DATA_FILE):
-        with open(USER_DATA_FILE, 'r', encoding='utf-8') as f:
-            return json.load(f)
-    return {}
-
-def save_user_data(data):
-    with open(USER_DATA_FILE, 'w', encoding='utf-8') as f:
-        json.dump(data, f, ensure_ascii=False, indent=4)
-
-if "user_data" not in st.session_state or not isinstance(st.session_state.user_data, dict):
-    st.session_state.user_data = load_user_data()
 if "show_detail" not in st.session_state:
     st.session_state.show_detail = False
 if "current_q" not in st.session_state:
@@ -362,7 +370,6 @@ with st.sidebar:
     else:
         d_day_str = "D-XX"
 
-    # gap="small" 옵션으로 버튼과 표시 상자 사이의 갭을 간결하게 감소
     col_d_btn, col_d_disp = st.columns([35, 65], gap="small")
     
     with col_d_btn:
@@ -377,7 +384,11 @@ with st.sidebar:
         default_val = datetime.strptime(st.session_state.d_day_target, "%Y-%m-%d").date() if st.session_state.d_day_target else get_kst_today()
         selected_date = st.date_input("목표 시험일 선택", value=default_val, key="d_day_picker_input")
         if st.button("확인 및 저장", use_container_width=True, key="btn_save_dday"):
-            st.session_state.d_day_target = selected_date.strftime("%Y-%m-%d")
+            saved_date_str = selected_date.strftime("%Y-%m-%d")
+            st.session_state.d_day_target = saved_date_str
+            # user_study_data.json 파일에 설정값 저장
+            st.session_state.user_data["_d_day_target"] = saved_date_str
+            save_user_data(st.session_state.user_data)
             st.session_state.show_d_day_picker = False
             st.rerun()
 
