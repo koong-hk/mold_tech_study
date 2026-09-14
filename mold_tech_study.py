@@ -107,44 +107,38 @@ def format_readable_text(text):
 # -----------------------------------------------------------------------------
 # 세션 상태 및 사용자 데이터 초기화
 # -----------------------------------------------------------------------------
-# 데이터 초기화 (결측치 제거 및 방어 로직 강화)
-    for q in df['문제'].dropna():
-        q_str = str(q).strip()
-        if not q_str:
-            continue
+ # -----------------------------------------------------------------------------
+# 세션 상태 및 사용자 데이터 초기화 (안전 방어 코드 적용)
+# -----------------------------------------------------------------------------
+# 1. user_data 세션 안전 초기화
+if "user_data" not in st.session_state or not isinstance(st.session_state.user_data, dict):
+    loaded_data = load_user_data()
+    st.session_state["user_data"] = loaded_data if isinstance(loaded_data, dict) else {}
 
-        # 1. 항목이 없거나 기존 값이 딕셔너리가 아닌 경우 새로 생성
-        if q_str not in st.session_state.user_data or not isinstance(st.session_state.user_data[q_str], dict):
-            st.session_state.user_data[q_str] = {
-                'clicks': 0, 
-                'importance': 3, 
-                'concept': '', 
-                'answer': '', 
-                'extra': '',
-                'image_notes': []
-            }
-        else:
-            # 2. 딕셔너리 형태인 경우 내부 키 안전 검사 및 누락된 키 보완
-            u_item = st.session_state.user_data[q_str]
-            if 'image_notes' not in u_item or not isinstance(u_item.get('image_notes'), list):
-                u_item['image_notes'] = []
-            if 'extra' not in u_item:
-                u_item['extra'] = ''
-            if 'concept' not in u_item:
-                u_item['concept'] = ''
-            if 'answer' not in u_item:
-                u_item['answer'] = ''
-            if 'clicks' not in u_item:
-                u_item['clicks'] = 0
-            if 'importance' not in u_item:
-                u_item['importance'] = 3
+# load_user_data() 결과가 None일 경우 대비 2차 검사
+if not isinstance(st.session_state.get("user_data"), dict):
+    st.session_state["user_data"] = {}
 
-    # 조회수 및 중요도 표출 필드 세팅
-    df = df.dropna(subset=['문제']).copy()
-    df['문제'] = df['문제'].astype(str).str.strip()
-    df['조회수'] = df['문제'].apply(lambda x: st.session_state.user_data.get(x, {}).get('clicks', 0))
-    df['중요도(별)'] = df['문제'].apply(lambda x: "⭐" * st.session_state.user_data.get(x, {}).get('importance', 3))
+if "main_mode" not in st.session_state:
+    st.session_state.main_mode = "exam"
 
+if "notes" not in st.session_state:
+    st.session_state.notes = load_notes()
+
+# 2. [에러 해결] get() 함수를 사용해 안전하게 _d_day_target 참조
+if "d_day_target" not in st.session_state:
+    user_data_dict = st.session_state.get("user_data", {})
+    st.session_state.d_day_target = user_data_dict.get("_d_day_target", None)
+
+if "show_d_day_picker" not in st.session_state:
+    st.session_state.show_d_day_picker = False
+
+if "show_detail" not in st.session_state:
+    st.session_state.show_detail = False
+
+if "current_q" not in st.session_state:
+    st.session_state.current_q = None
+ 
 
 # 저장된 파일에서 d_day_target을 불러와 세션 상태에 저장 (미설정 시 None)
 if "d_day_target" not in st.session_state:
