@@ -846,13 +846,13 @@ elif st.session_state.main_mode == "note":
         /* 노트 목록 / 편집 버튼 컨테이너 상단 여백 추가 */
         .note-header-container {
             margin-top: 15px;      /* 상단 여백을 두어 잘림 방지 */
-            margin-bottom: 3px;
+            margin-bottom: 5px;
         }
         
         /* 아래 제목의 상하 여백 줄이기 */
         .custom-title {
-            margin-top: 0px !important;    /* 위 여백 축소 */
-            margin-bottom: 0px !important; /* 아래 여백 축소 */
+            margin-top: 3px !important;    /* 위 여백 축소 */
+            margin-bottom: 3px !important; /* 아래 여백 축소 */
             font-size: 1.2rem;
             font-weight: bold;
         }
@@ -864,6 +864,22 @@ elif st.session_state.main_mode == "note":
     # -------------------------------------------------------------
     # st.subheader 대신 커스텀 클래스가 적용된 HTML 제목 사용
     st.markdown('<div class="custom-title">📌 선택된 노트 내용</div>', unsafe_allow_html=True)
+         <style>
+        /* 제목 상단 여백 줄이기 */
+        .note-header-container {
+            margin-top: 5px;      /* 상단 여백 */
+            margin-bottom: 5px;
+        }
+        
+        /* 아래 제목의 상하 여백 줄이기 */
+        .custom-title {
+            margin-top: 3px !important;    /* 위 여백 축소 */
+            margin-bottom: 3px !important; /* 아래 여백 축소 */
+            font-size: 1.2rem;
+            font-weight: bold;
+        }
+        </style>
+    """, unsafe_allow_html=True)
     
     # 이어서 기존 노트 본문 및 수정 폼 코드 작성...
     # -------------------------------------------------------------------------
