@@ -851,8 +851,8 @@ elif st.session_state.main_mode == "note":
         
         /* 아래 제목의 상하 여백 줄이기 */
         .custom-title {
-            margin-top: 3px !important;    /* 위 여백 축소 */
-            margin-bottom: 3px !important; /* 아래 여백 축소 */
+            margin-top: 0px !important;    /* 위 여백 축소 */
+            margin-bottom: 0px !important; /* 아래 여백 축소 */
             font-size: 1.2rem;
             font-weight: bold;
         }
