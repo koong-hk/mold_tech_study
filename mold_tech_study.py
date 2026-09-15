@@ -833,99 +833,149 @@ if st.button("💾 전체 학습 내용 저장하기", type="primary", use_conta
 elif st.session_state.main_mode == "note":
     # --- [학습노트 모드] ---
     st.markdown("### 📖 서술형 학습노트 모음")
-    st.info("개념 정리, 관련 자료 링크, 도면/손필기 이미지를 자유롭게 첨부하여 학습노트를 작성하고 관리하세요.")
+    st.info("등록된 학습노트 목록을 확인하고, 자유롭게 편집 및 삭제할 수 있습니다.")
 
-    # 1. 새 학습노트 작성 폼 (Expander)
+    # 1. 새 학습노트 추가 (Expander)
     with st.expander("➕ 새 학습노트 작성하기", expanded=False):
-        with st.form("create_note_form", clear_on_submit=True):
-            new_title = st.text_input("📌 노트 제목", placeholder="예: 프로그레시브 금형 메커니즘 및 주요 결함 요약")
-            new_content = st.text_area("📝 노트 본문 내용", height=200, placeholder="서술형 요약 및 중요 학습 내용을 작성하세요...")
-            
-            # 다중 링크 입력 (줄바꿈 구분)
-            new_links_raw = st.text_area(
-                "🔗 관련 참고 링크 (줄바꿈으로 여러 개 구분 입력)", 
-                height=90, 
-                placeholder="https://example.com/ref1\nhttps://example.com/ref2"
-            )
-            
-            # 다중 이미지 첨부 (accept_multiple_files=True)
-            uploaded_imgs = st.file_uploader(
-                "📷 관련 이미지 첨부 (복수 선택 가능)", 
-                type=['png', 'jpg', 'jpeg'], 
-                accept_multiple_files=True,
-                key="uploader_new_note"
-            )
+        new_title = st.text_input("📌 노트 제목", placeholder="예: 프로그레시브 금형 메커니즘 요약", key="new_note_title")
+        new_content = st.text_area("📝 노트 본문 내용", height=150, placeholder="학습한 내용을 작성하세요...", key="new_note_content")
+        new_links_raw = st.text_area(
+            "🔗 참고 링크 (줄바꿈으로 여러 개 입력)", 
+            height=80, 
+            placeholder="https://example.com/1\nhttps://example.com/2",
+            key="new_note_links"
+        )
+        new_imgs = st.file_uploader(
+            "📷 이미지 첨부 (복수 선택 가능)", 
+            type=['png', 'jpg', 'jpeg'], 
+            accept_multiple_files=True, 
+            key="new_note_imgs"
+        )
 
-            submit_note = st.form_submit_button("💾 노트 저장하기", type="primary", use_container_width=True)
+        if st.button("💾 새 노트 저장", type="primary", use_container_width=True, key="btn_add_note"):
+            if not new_title.strip():
+                st.warning("노트 제목을 입력해주세요.")
+            else:
+                links_list = [line.strip() for line in new_links_raw.split('\n') if line.strip()]
+                img_list = []
+                if new_imgs:
+                    for img in new_imgs:
+                        b64 = convert_image_to_base64(img)
+                        if b64:
+                            img_list.append(b64)
 
-            if submit_note:
-                if not new_title.strip():
-                    st.warning("노트 제목을 입력해주세요.")
-                else:
-                    # 1) 입력받은 링크들을 줄바꿈 단위로 파싱
-                    links_list = [line.strip() for line in new_links_raw.split('\n') if line.strip()]
-                    
-                    # 2) 선택된 여러 이미지를 Base64 문자열 리스트로 변환
-                    images_b64_list = []
-                    if uploaded_imgs:
-                        for img_file in uploaded_imgs:
-                            b64_str = convert_image_to_base64(img_file)
-                            if b64_str:
-                                images_b64_list.append(b64_str)
-
-                    # 3) 노트 데이터 구조 생성
-                    note_obj = {
-                        "id": int(time.time()),
-                        "created_at": datetime.now().strftime("%Y-%m-%d %H:%M"),
-                        "title": new_title.strip(),
-                        "content": new_content,
-                        "links": links_list,
-                        "images": images_b64_list
-                    }
-
-                    st.session_state.notes.append(note_obj)
-                    save_notes(st.session_state.notes)
-                    st.success("새 학습노트가 성공적으로 저장되었습니다!")
-                    st.rerun()
+                new_note = {
+                    "id": int(time.time()),
+                    "title": new_title.strip(),
+                    "content": new_content,
+                    "links": links_list,
+                    "images": img_list,
+                    "created_at": datetime.now().strftime("%Y-%m-%d %H:%M")
+                }
+                st.session_state.notes.append(new_note)
+                save_notes(st.session_state.notes)
+                st.success("새 노트가 성공적으로 저장되었습니다!")
+                st.rerun()
 
     st.markdown("---")
 
-    # 2. 저장된 노트 목록 표시 (최신순)
+    # 2. 노트 목록 조회 및 편집/삭제 (이전 보기 방식 복원)
     notes_list = st.session_state.notes
     if not notes_list:
-        st.write("등록된 학습노트가 없습니다. 상단의 **[➕ 새 학습노트 작성하기]**를 눌러 첫 노트를 작성해보세요!")
+        st.write("등록된 학습노트가 없습니다. 상단의 **[➕ 새 학습노트 작성하기]**를 이용해 보세요!")
     else:
         for idx, note in enumerate(reversed(notes_list)):
             real_idx = len(notes_list) - 1 - idx
-            note_title = note.get('title', '제목 없음')
+            note_title = note.get('title', f'노트 #{real_idx+1}')
             created_at = note.get('created_at', '')
             header_str = f"📖 노트 #{real_idx+1}: {note_title}" + (f" ({created_at})" if created_at else "")
-            
+
             with st.expander(header_str):
-                # 본문
-                st.markdown("##### 📝 본문 내용")
-                st.markdown(format_readable_text(note.get('content', '')))
+                edit_key = f"edit_mode_{real_idx}"
+                if edit_key not in st.session_state:
+                    st.session_state[edit_key] = False
 
-                # 여러 개의 첨부 링크 출력
-                links = note.get('links', [])
-                if links:
-                    st.markdown("##### 🔗 참고 링크")
-                    for link in links:
-                        st.markdown(f"- [{link}]({link})")
+                if not st.session_state[edit_key]:
+                    # --- [보기 모드] ---
+                    st.markdown("##### 📝 본문 내용")
+                    st.markdown(format_readable_text(note.get('content', '')))
 
-                # 여러 개의 첨부 이미지 출력 (3열 갤러리)
-                images = note.get('images', [])
-                if images:
-                    st.markdown("##### 🖼️ 첨부 이미지")
-                    img_cols = st.columns(3)
-                    for img_idx, b64_img in enumerate(images):
-                        with img_cols[img_idx % 3]:
-                            st.image(f"data:image/png;base64,{b64_img}", use_column_width=True)
+                    # 링크 목록 표출
+                    links = note.get('links', [])
+                    if links:
+                        st.markdown("##### 🔗 참고 링크")
+                        for link in links:
+                            st.markdown(f"- [{link}]({link})")
 
-                # 삭제 버튼
-                st.markdown("<div style='margin-top: 15px;'></div>", unsafe_allow_html=True)
-                if st.button(f"🗑️ 노트 삭제", key=f"btn_del_note_{real_idx}"):
-                    st.session_state.notes.pop(real_idx)
-                    save_notes(st.session_state.notes)
-                    st.success("노트가 삭제되었습니다.")
-                    st.rerun()
+                    # 이미지 목록 표출 (3열 갤러리)
+                    images = note.get('images', [])
+                    if images:
+                        st.markdown("##### 🖼️ 첨부 이미지")
+                        img_cols = st.columns(3)
+                        for img_idx, b64_img in enumerate(images):
+                            with img_cols[img_idx % 3]:
+                                st.image(f"data:image/png;base64,{b64_img}", use_column_width=True)
+
+                    # 하단 관리 버튼 (편집 / 삭제)
+                    st.markdown("<div style='margin-top: 15px;'></div>", unsafe_allow_html=True)
+                    col_btn1, col_btn2 = st.columns([12, 88])
+                    with col_btn1:
+                        if st.button("✏️ 편집", key=f"btn_edit_{real_idx}"):
+                            st.session_state[edit_key] = True
+                            st.rerun()
+                    with col_btn2:
+                        if st.button("🗑️ 노트 삭제", key=f"btn_del_{real_idx}"):
+                            st.session_state.notes.pop(real_idx)
+                            save_notes(st.session_state.notes)
+                            st.success("노트가 삭제되었습니다.")
+                            st.rerun()
+
+                else:
+                    # --- [편집 모드] ---
+                    st.markdown("##### ✏️ 노트 수정하기")
+                    edit_title = st.text_input("제목 수정", value=note.get('title', ''), key=f"edit_title_{real_idx}")
+                    edit_content = st.text_area("본문 수정", value=note.get('content', ''), height=150, key=f"edit_content_{real_idx}")
+
+                    existing_links_str = "\n".join(note.get('links', []))
+                    edit_links_raw = st.text_area("참고 링크 수정 (줄바꿈 구분)", value=existing_links_str, height=80, key=f"edit_links_{real_idx}")
+
+                    add_imgs = st.file_uploader("이미지 추가 첨부 (복수 선택 가능)", type=['png', 'jpg', 'jpeg'], accept_multiple_files=True, key=f"edit_imgs_{real_idx}")
+
+                    # 기존 이미지 삭제 관리
+                    existing_imgs = note.get('images', [])
+                    keep_imgs = []
+                    if existing_imgs:
+                        st.caption("기존 첨부 이미지 (삭제할 항목을 체크하세요):")
+                        img_cols = st.columns(3)
+                        for img_idx, b64_img in enumerate(existing_imgs):
+                            with img_cols[img_idx % 3]:
+                                st.image(f"data:image/png;base64,{b64_img}", use_column_width=True)
+                                is_delete = st.checkbox("삭제", key=f"chk_del_img_{real_idx}_{img_idx}")
+                                if not is_delete:
+                                    keep_imgs.append(b64_img)
+
+                    st.markdown("<div style='margin-top: 10px;'></div>", unsafe_allow_html=True)
+                    col_save, col_cancel = st.columns([15, 85])
+                    with col_save:
+                        if st.button("💾 저장 완료", type="primary", key=f"btn_save_edit_{real_idx}"):
+                            if add_imgs:
+                                for img in add_imgs:
+                                    b64 = convert_image_to_base64(img)
+                                    if b64:
+                                        keep_imgs.append(b64)
+
+                            note['title'] = edit_title.strip()
+                            note['content'] = edit_content
+                            note['links'] = [line.strip() for line in edit_links_raw.split('\n') if line.strip()]
+                            note['images'] = keep_imgs
+
+                            st.session_state.notes[real_idx] = note
+                            save_notes(st.session_state.notes)
+                            st.session_state[edit_key] = False
+                            st.success("수정사항이 저장되었습니다.")
+                            st.rerun()
+
+                    with col_cancel:
+                        if st.button("취소", key=f"btn_cancel_edit_{real_idx}"):
+                            st.session_state[edit_key] = False
+                            st.rerun()
