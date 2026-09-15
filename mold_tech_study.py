@@ -863,7 +863,7 @@ elif st.session_state.main_mode == "note":
     # 3) 상하 여백을 줄인 제목 배치
     # -------------------------------------------------------------
     # st.subheader 대신 커스텀 클래스가 적용된 HTML 제목 사용
-    st.markdown('<div class="custom-title">📌 선택된 노트 내용</div>', unsafe_allow_html=True)
+    st.markdown('<div class="custom-title">📌 노트 </div>', unsafe_allow_html=True)
    
     # 이어서 기존 노트 본문 및 수정 폼 코드 작성...
     # -------------------------------------------------------------------------
