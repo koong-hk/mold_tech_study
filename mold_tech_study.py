@@ -846,14 +846,14 @@ elif st.session_state.main_mode == "note":
         /* 노트 목록 / 편집 버튼 컨테이너 상단 여백 추가 */
         .note-header-container {
             margin-top: 15px;      /* 상단 여백을 두어 잘림 방지 */
-            margin-bottom: 10px;
+            margin-bottom: 3px;
         }
         
         /* 아래 제목의 상하 여백 줄이기 */
         .custom-title {
-            margin-top: 5px !important;    /* 위 여백 축소 */
-            margin-bottom: 8px !important; /* 아래 여백 축소 */
-            font-size: 1.4rem;
+            margin-top: 3px !important;    /* 위 여백 축소 */
+            margin-bottom: 3px !important; /* 아래 여백 축소 */
+            font-size: 1.2rem;
             font-weight: bold;
         }
         </style>
