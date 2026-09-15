@@ -834,25 +834,8 @@ if st.session_state.main_mode == "exam":
                         st.rerun()
             pass
 
-# -----------------------------------------------------------------------------
-# 전체 학습 내용 저장 버튼 로직 (수정된 코드)
-# -----------------------------------------------------------------------------
+
 st.markdown("<div style='margin-top: 15px;'></div>", unsafe_allow_html=True)
-
-if st.button("💾 전체 학습 내용 저장하기", type="primary", use_container_width=True, key="btn_save_all_detail"):
-    # 1. 입력받은 텍스트 영역 값들을 u_data 객체에 반영
-    u_data['concept'] = concept_val
-    u_data['answer'] = answer_val
-    u_data['extra'] = extra_val
-    
-    # 2. [수정 포인트] 수정된 u_data를 세션 상태의 메인 딕셔너리에 명확하게 재할당
-    st.session_state.user_data[q_title] = u_data
-    
-    # 3. JSON 파일로 최종 저장
-    save_user_data(st.session_state.user_data)
-    
-    st.success("작성하신 핵심개념, 예시 답안, 추가 메모 내용이 성공적으로 저장되었습니다!")
-
             
 elif st.session_state.main_mode == "note":
     # -------------------------------------------------------------------------
