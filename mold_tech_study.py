@@ -914,7 +914,7 @@ elif st.session_state.main_mode == "note":
                         img_cols = st.columns(3)
                         for img_idx, b64_img in enumerate(images):
                             with img_cols[img_idx % 3]:
-                                st.image(f"data:image/png;base64,{b64_img}", use_column_width=True)
+                                st.image(f"data:image/png;base64,{b64_img}", use_container_width=True)
 
                     # 하단 관리 버튼 (편집 / 삭제)
                     st.markdown("<div style='margin-top: 15px;'></div>", unsafe_allow_html=True)
@@ -949,7 +949,7 @@ elif st.session_state.main_mode == "note":
                         img_cols = st.columns(3)
                         for img_idx, b64_img in enumerate(existing_imgs):
                             with img_cols[img_idx % 3]:
-                                st.image(f"data:image/png;base64,{b64_img}", use_column_width=True)
+                                st.image(f"data:image/png;base64,{b64_img}", use_container_width=True)
                                 is_delete = st.checkbox("삭제", key=f"chk_del_img_{real_idx}_{img_idx}")
                                 if not is_delete:
                                     keep_imgs.append(b64_img)
