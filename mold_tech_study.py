@@ -846,35 +846,19 @@ elif st.session_state.main_mode == "note":
         /* 노트 목록 / 편집 버튼 컨테이너 상단 여백 추가 */
         .note-header-container {
             margin-top: 15px;      /* 상단 여백을 두어 잘림 방지 */
-            margin-bottom: 10px;
+            margin-bottom: 5px;
         }
         
         /* 아래 제목의 상하 여백 줄이기 */
         .custom-title {
-            margin-top: 5px !important;    /* 위 여백 축소 */
-            margin-bottom: 8px !important; /* 아래 여백 축소 */
+            margin-top: 3px !important;    /* 위 여백 축소 */
+            margin-bottom: 3px !important; /* 아래 여백 축소 */
             font-size: 1.4rem;
             font-weight: bold;
         }
         </style>
     """, unsafe_allow_html=True)
-
-    # -------------------------------------------------------------
-    # 2) 버튼 및 상단 컨트롤 구성 (필요시 st.columns 활용)
-    # -------------------------------------------------------------
-    # 여백 조절용 wrapper <div> 시작
-    st.markdown('<div class="note-header-container">', unsafe_allow_html=True)
-    
-    col1, col2 = st.columns([4, 1])
-    with col1:
-        st.write("📋 **노트 목록**")
-    with col2:
-        if st.button("✏️ 편집"):
-            st.session_state.edit_mode = True
-            st.rerun()
-            
-    st.markdown('</div>', unsafe_allow_html=True) # wrapper <div> 종료
-
+ 
     # -------------------------------------------------------------
     # 3) 상하 여백을 줄인 제목 배치
     # -------------------------------------------------------------
