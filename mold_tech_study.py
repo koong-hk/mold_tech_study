@@ -864,7 +864,8 @@ elif st.session_state.main_mode == "note":
     # -------------------------------------------------------------
     # st.subheader 대신 커스텀 클래스가 적용된 HTML 제목 사용
     st.markdown('<div class="custom-title">📌 선택된 노트 내용</div>', unsafe_allow_html=True)
-         <style>
+    st.markdown("""
+        <style>
         /* 제목 상단 여백 줄이기 */
         .note-header-container {
             margin-top: 5px;      /* 상단 여백 */
