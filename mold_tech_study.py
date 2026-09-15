@@ -858,26 +858,7 @@ elif st.session_state.main_mode == "note":
         }
         </style>
     """, unsafe_allow_html=True)
-
     
-    '''
-    # -------------------------------------------------------------
-    # 2) 버튼 및 상단 컨트롤 구성 (필요시 st.columns 활용)
-    # -------------------------------------------------------------
-    # 여백 조절용 wrapper <div> 시작
-    st.markdown('<div class="note-header-container">', unsafe_allow_html=True)
-    
-    col1, col2 = st.columns([4, 1])
-    with col1:
-        st.write("📋 **노트 목록**")
-    with col2:
-        if st.button("✏️ 편집"):
-            st.session_state.edit_mode = True
-            st.rerun()
-            
-    st.markdown('</div>', unsafe_allow_html=True) # wrapper <div> 종료
-    '''
-
     # -------------------------------------------------------------
     # 3) 상하 여백을 줄인 제목 배치
     # -------------------------------------------------------------
