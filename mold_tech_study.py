@@ -835,7 +835,7 @@ if st.session_state.main_mode == "exam":
             pass
 
 
-# st.markdown("<div style='margin-top: 15px;'></div>", unsafe_allow_html=True)
+st.markdown("<div style='margin-top: 15px;'></div>", unsafe_allow_html=True)
             
 elif st.session_state.main_mode == "note":
     # -------------------------------------------------------------------------
