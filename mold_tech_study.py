@@ -128,6 +128,32 @@ def format_readable_text(text: str) -> str:
     text = re.sub(r'\$\$(.*?)\$\$', clean_latex_block, text, flags=re.DOTALL)
 
     return text
+
+# 스크립트가 실행되는 디렉터리 기준 절대 경로 설정 (경로 이탈 방지)
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+NOTES_FILE = os.path.join(BASE_DIR, "notes.json")
+USER_DATA_FILE = os.path.join(BASE_DIR, "user_study_data.json")
+
+# 학습노트 안전 로드 함수
+def load_notes():
+    if os.path.exists(NOTES_FILE):
+        try:
+            with open(NOTES_FILE, "r", encoding="utf-8") as f:
+                data = json.load(f)
+                if isinstance(data, list):
+                    return data
+        except Exception as e:
+            st.error(f"노트 파일 로드 중 오류 발생: {e}")
+            return []
+    return []
+
+# 학습노트 안전 저장 함수 (빈 데이터로 인한 덮어쓰기 방어)
+def save_notes(notes):
+    try:
+        with open(NOTES_FILE, "w", encoding="utf-8") as f:
+            json.dump(notes, f, ensure_ascii=False, indent=2)
+    except Exception as e:
+        st.error(f"노트 저장 중 오류 발생: {e}")
 # -----------------------------------------------------------------------------
 # 세션 상태 및 사용자 데이터 초기화
 # -----------------------------------------------------------------------------
