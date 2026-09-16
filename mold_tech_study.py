@@ -864,6 +864,40 @@ if st.session_state.main_mode == "exam":
     # st.markdown("<div style='margin-top: 15px;'></div>", unsafe_allow_html=True)
             
 elif st.session_state.main_mode == "note":
+
+st.markdown("### 📖 서술형 학습노트 관리")
+
+# 백업 및 데이터 관리 (Expander)
+with st.expander("💾 노트 데이터 백업 / 복원 (JSON 파일)"):
+    col_export, col_import = st.columns(2)
+    
+    # 1) 내 컴퓨터로 백업 다운로드
+    with col_export:
+        notes_json_str = json.dumps(st.session_state.notes, ensure_ascii=False, indent=2)
+        st.download_button(
+            label="📥 노트 데이터 백업 다운로드",
+            data=notes_json_str,
+            file_name="notes_backup.json",
+            mime="application/json",
+            use_container_width=True
+        )
+    
+    # 2) 파일 올려서 복원하기
+    with col_import:
+        uploaded_backup = st.file_uploader("📤 백업 JSON 파일 불러오기", type=["json"], key="restore_notes_uploader")
+        if uploaded_backup is not None:
+            if st.button("🔄 데이터 복원 적용", type="primary", use_container_width=True):
+                try:
+                    loaded_backup_notes = json.load(uploaded_backup)
+                    if isinstance(loaded_backup_notes, list):
+                        st.session_state.notes = loaded_backup_notes
+                        save_notes(st.session_state.notes)
+                        st.success("성공적으로 노트를 복원했습니다!")
+                        st.rerun()
+                    else:
+                        st.error("올바른 노트 백업 파일 형식이 아닙니다.")
+                except Exception as e:
+                    st.error(f"복원 실패: {e}")
     # -------------------------------------------------------------
     # 1) 노트목록 및 편집 버튼 영역 (상단 여백을 주어 잘림 방지)
     # -------------------------------------------------------------
