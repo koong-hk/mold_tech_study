@@ -122,10 +122,6 @@ def render_mini_calendar():
     html += "</tbody></table></div>"
     return html
 
-import re
-
-import re
-
 def format_readable_text(text: str) -> str:
     """노트 본문의 LaTeX 수식 및 콜론(:) 기준 수직 들여쓰기 자동 보정"""
     if not text or not str(text).strip():
