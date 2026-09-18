@@ -9,14 +9,23 @@ import pandas as pd
 import streamlit as st
 
 # -----------------------------------------------------------------------------
-# 1. 파일 경로 절대경로 설정 (최상단 고정으로 데이터 소실 및 경로 이탈 방지)
+# 1. 페이지 설정 (반드시 모든 Streamlit 명령어 중 최상단에 위치해야 함)
+# -----------------------------------------------------------------------------
+st.set_page_config(page_title="금형기술사 학습 시스템", layout="wide")
+
+# -----------------------------------------------------------------------------
+# 2. 파일 경로 및 절대경로 설정
 # -----------------------------------------------------------------------------
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 NOTES_FILE = os.path.join(BASE_DIR, "notes.json")
 USER_DATA_FILE = os.path.join(BASE_DIR, "user_study_data.json")
+IMAGE_DIR = os.path.join(BASE_DIR, "saved_images")
+
+if not os.path.exists(IMAGE_DIR):
+    os.makedirs(IMAGE_DIR, exist_ok=True)
 
 # -----------------------------------------------------------------------------
-# 2. 데이터 입출력 함수 (노트 및 사용자 학습/D-Day 데이터)
+# 3. 데이터 입출력 함수
 # -----------------------------------------------------------------------------
 def get_kst_today():
     """한국 표준시(KST: UTC+9) 기준 오늘 날짜 구하기"""
@@ -70,7 +79,7 @@ def convert_image_to_base64(uploaded_file):
     return None
 
 # -----------------------------------------------------------------------------
-# 3. UI 및 텍스트/수식 포맷팅 헬퍼 함수
+# 4. UI 및 텍스트/수식 포맷팅 헬퍼 함수
 # -----------------------------------------------------------------------------
 def render_mini_calendar():
     """커스텀 미니 달력 HTML 생성 함수"""
@@ -120,7 +129,6 @@ def format_readable_text(text: str) -> str:
     
     text_str = str(text)
     
-    # 1. 괄호 수식 구문 (예: (F_{clamp} = P_{cavity} \times A_{projected})) 자동 변환
     def replace_bracket_math(match):
         formula = match.group(1).strip()
         formula_clean = re.sub(r'_\{([a-zA-Z0-9_\-]+)\}', r'_{\\text{\1}}', formula)
@@ -128,7 +136,6 @@ def format_readable_text(text: str) -> str:
 
     text_str = re.sub(r'\(([^)]*?=[^)]*?\\[a-zA-Z]+[^)]*?)\)', replace_bracket_math, text_str)
     
-    # 2. 명시적 블록 수식 $$ ... $$ 내 단어 첨자 보정
     def clean_latex_block(match):
         formula = match.group(1)
         formula_clean = re.sub(r'_\{([a-zA-Z0-9_\-]+)\}', r'_{\\text{\1}}', formula)
@@ -139,7 +146,7 @@ def format_readable_text(text: str) -> str:
     return text_str
 
 # -----------------------------------------------------------------------------
-# 4. 세션 상태 및 사용자 데이터 초기화
+# 5. 세션 상태 초기화
 # -----------------------------------------------------------------------------
 if "user_data" not in st.session_state or not isinstance(st.session_state.user_data, dict):
     loaded_data = load_user_data()
@@ -168,18 +175,11 @@ if "current_q" not in st.session_state:
     st.session_state.current_q = None
 
 # -----------------------------------------------------------------------------
-# 1. 페이지 설정 및 CSS 적용
+# 6. 정제된 CSS 스타일 적용 (충돌 및 깨짐 완벽 방지)
 # -----------------------------------------------------------------------------
-st.set_page_config(page_title="금형기술사 학습 시스템", layout="wide")
-
-IMAGE_DIR = "saved_images"
-if not os.path.exists(IMAGE_DIR):
-    os.makedirs(IMAGE_DIR, exist_ok=True)
-
-# 통합 CSS 스타일 설정 (중복 구문 제거 및 5:5 비율 폭 100% 강제 고정)
 st.markdown("""
     <style>
-        /* 1. 메인 영역 상단 여백 최소화 */
+        /* 기본 메인 레이아웃 패딩 최소화 */
         .block-container {
             padding-top: 2.0rem !important;
             padding-bottom: 1.5rem !important;
@@ -191,7 +191,7 @@ st.markdown("""
             margin-bottom: 0.8rem !important;
         }
 
-        /* 2. 사이드바 너비 및 간격 설정 */
+        /* 사이드바 기본 크기 지정 */
         section[data-testid="stSidebar"] {
             width: 280px !important;
         }
@@ -201,99 +201,63 @@ st.markdown("""
             padding-top: 0.2rem !important;
         }
 
-        /* 3. 사이드바 D-Day 5:5 컬럼 영역 폭 100% 및 Flex Shrink 방지 */
-        section[data-testid="stSidebar"] div[data-testid="stHorizontalBlock"] {
-            gap: 6px !important;
-            align-items: center !important;
-            width: 100% !important;
-            margin-top: 8px !important;
-        }
-
-        section[data-testid="stSidebar"] div[data-testid="stColumn"] {
-            min-width: 0 !important;
-            width: 100% !important;
-            flex: 1 1 0% !important; /* 컬럼 비율 5:5 균등 분할 */
-            margin: 0 !important;
-            padding: 0 !important;
-        }
-
-        /* 컬럼 내 마크다운 래퍼 및 p 태그 폭 100% 강제 확장 */
-        section[data-testid="stSidebar"] div[data-testid="stColumn"] > div,
-        section[data-testid="stSidebar"] div[data-testid="stColumn"] div[data-testid="stElementContainer"],
-        section[data-testid="stSidebar"] div[data-testid="stColumn"] div[data-testid="stMarkdownContainer"] {
-            margin: 0 !important;
-            padding: 0 !important;
-            height: 34px !important;
-            width: 100% !important;
-            min-width: 0 !important;
-            display: flex !important;
-            flex: 1 1 100% !important; /* Flex 내에서 너비 꽉 차게 확장 */
-            align-items: center !important;
-        }
-
-        section[data-testid="stSidebar"] div[data-testid="stColumn"] div[data-testid="stMarkdownContainer"] p {
-            margin: 0 !important;
-            padding: 0 !important;
-            width: 100% !important;
-            flex: 1 1 100% !important;
-            line-height: 1 !important;
-        }
-
-        /* 4. 좌측 D-Day 설정 버튼 스타일 */
-        section[data-testid="stSidebar"] div[data-testid="stColumn"] div.stButton {
-            margin: 0 !important;
-            padding: 0 !important;
-            width: 100% !important;
-            height: 34px !important;
-        }
-
-        section[data-testid="stSidebar"] div[data-testid="stColumn"] div.stButton > button {
+        /* 사이드바 기본 버튼 스타일 (블랙 테마) */
+        section[data-testid="stSidebar"] div.stButton > button {
             width: 100% !important;
             height: 34px !important;
             min-height: 34px !important;
-            max-height: 34px !important;
-            margin: 0 !important;
-            padding: 0 4px !important;
-            box-sizing: border-box !important;
-            font-size: 0.8rem !important;
+            font-size: 0.82rem !important;
             background-color: #000000 !important;
             color: #ffffff !important;
             border: 1px solid #444444 !important;
             border-radius: 8px !important;
-            white-space: nowrap !important;
+            box-sizing: border-box !important;
+            padding: 0 4px !important;
         }
 
-        /* 5. 우측 D-Day 표시 박스 스타일 (100% 채움 고정) */
+        section[data-testid="stSidebar"] div.stButton > button:hover {
+            background-color: #222222 !important;
+            border-color: #666666 !important;
+        }
+
+        /* D-Day 컨테이너 및 컬럼 레벨 마크다운 확장 보정 */
+        section[data-testid="stSidebar"] div[data-testid="stHorizontalBlock"] {
+            gap: 6px !important;
+            align-items: center !important;
+            width: 100% !important;
+            margin-top: 6px !important;
+        }
+
+        /* stMarkdownContainer 가두기 해제 */
+        section[data-testid="stSidebar"] div[data-testid="stMarkdownContainer"],
+        section[data-testid="stSidebar"] div[data-testid="stMarkdownContainer"] > p {
+            width: 100% !important;
+            margin: 0 !important;
+            padding: 0 !important;
+        }
+
+        /* 우측 D-Day 표시 박스 (5:5 비율 가로 100% 확장) */
         .dday-box {
             background-color: #000000;
             color: #ffffff;
             font-weight: bold;
             font-size: 0.85rem;
             height: 34px !important;
-            min-height: 34px !important;
-            max-height: 34px !important;
+            line-height: 32px !important;
+            text-align: center;
             border-radius: 8px;
             border: 1px solid #444444;
             width: 100% !important;
-            flex: 1 1 100% !important;
+            display: block !important;
             box-sizing: border-box !important;
             margin: 0 !important;
             padding: 0 !important;
-            display: flex !important;
-            align-items: center !important;
-            justify-content: center !important;
-            line-height: 1 !important;
         }
     </style>
 """, unsafe_allow_html=True)
 
-if "show_detail" not in st.session_state:
-    st.session_state.show_detail = False
-if "current_q" not in st.session_state:
-    st.session_state.current_q = None
-
 # -----------------------------------------------------------------------------
-# 2. 데이터 불러오기
+# 7. 데이터 로드 헬퍼
 # -----------------------------------------------------------------------------
 @st.cache_data
 def load_excel_data(uploaded_file):
@@ -319,13 +283,11 @@ def load_excel_data(uploaded_file):
     return df
 
 # -----------------------------------------------------------------------------
-# 3. 사이드바 레이아웃
+# 8. 사이드바 구성
 # -----------------------------------------------------------------------------
 with st.sidebar:
-    # 1. 상단 100% 폭 파일 업로더
     uploaded_file = st.file_uploader("📂 엑셀 파일 업로드", type=['xlsx', 'xls'])
     
-    # 2. 모드 전환 버튼 (기출문제 / 학습노트)
     col_nav1, col_nav2 = st.columns(2)
     with col_nav1:
         btn_exam_type = "primary" if st.session_state.main_mode == "exam" else "secondary"
@@ -343,12 +305,10 @@ with st.sidebar:
     st.markdown("---")
     st.markdown("**🔍 문제 필터링**")
 
-    # 3. 키워드 검색 및 필터 컨트롤
     search_keyword = st.text_input("문제 키워드 검색", placeholder="검색어 입력...", label_visibility="collapsed")
 
     df = load_excel_data(uploaded_file)
 
-    # 데이터 전처리
     for q in df['문제']:
         if q not in st.session_state.user_data:
             st.session_state.user_data[q] = {
@@ -374,14 +334,14 @@ with st.sidebar:
     sort_by_clicks = st.checkbox("자주 본 문제 순 정렬 (조회수 ⇧)")
 
     # -------------------------------------------------------------------------
-    # 4. 사이드바 하단: 미니 달력 & D-Day 영역
+    # 사이드바 하단: 미니 달력 & D-Day 영역 (5:5 정렬 및 간격 정돈)
     # -------------------------------------------------------------------------
-    st.markdown("<div style='margin-top: 20px; border-top: 1px solid #333333; padding-top: 12px;'></div>", unsafe_allow_html=True)
+    st.markdown("<div style='margin-top: 15px; border-top: 1px solid #333333; padding-top: 10px;'></div>", unsafe_allow_html=True)
 
     # 블랙 배경 미니 달력 출력
     st.markdown(render_mini_calendar(), unsafe_allow_html=True)
 
-    # D-Day 계산
+    # D-Day 수치 계산
     today_date = get_kst_today()
     if st.session_state.d_day_target:
         target_dt = datetime.strptime(st.session_state.d_day_target, "%Y-%m-%d").date()
@@ -395,7 +355,7 @@ with st.sidebar:
     else:
         d_day_str = "D-XX"
 
-    # 좌/우 5:5 비율 균등 분할
+    # 좌/우 5:5 비율 컬럼 분할
     col_d_btn, col_d_disp = st.columns([50, 50], gap="small", vertical_alignment="center")
 
     with col_d_btn:
@@ -416,7 +376,6 @@ with st.sidebar:
             save_user_data(st.session_state.user_data)
             st.session_state.show_d_day_picker = False
             st.rerun()
-            
 # -----------------------------------------------------------------------------
 # 5. 필터링 조건 적용
 # -----------------------------------------------------------------------------
