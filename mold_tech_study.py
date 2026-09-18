@@ -122,6 +122,8 @@ def render_mini_calendar():
     html += "</tbody></table></div>"
     return html
 
+import re
+
 def format_readable_text(text: str) -> str:
     """노트 본문의 LaTeX 수식 및 콜론(:) 기준 수직 들여쓰기 자동 보정"""
     if not text or not str(text).strip():
@@ -145,7 +147,7 @@ def format_readable_text(text: str) -> str:
 
     text_str = re.sub(r'\$\$(.*?)\$\$', clean_latex_block, text_str, flags=re.DOTALL)
 
-    # 3. [신규] 콜론(:) 기준 수직 들여쓰기 레이아웃 자동 변환
+    # 3. 콜론(:) 기준 수직 들여쓰기 레이아웃 자동 변환 (Flexbox 연동)
     lines = text_str.split('\n')
     new_lines = []
     for line in lines:
@@ -154,10 +156,10 @@ def format_readable_text(text: str) -> str:
             new_lines.append(line)
             continue
         
-        # "1. 항목명: 내용" 또는 "항목명: 내용" 패턴 감지
+        # "1. 항목명: 내용" 또는 "항목명: 내용" 패턴 감지 (최대 30자 이내 콜론)
         match = re.match(r'^(\s*(?:\d+\.|\-|\*|\•)?\s*[^:\n]{1,30}:)\s*(.+)$', line)
         if match:
-            head = match.group(1)  # 콜론까지의 항목명 (예: "1. 주요 특성:")
+            head = match.group(1)  # 콜론까지의 항목명
             tail = match.group(2)  # 콜론 뒤의 본문 내용
             
             # 시간 표시(예: 12:30)가 아닌 경우에만 Flex 들여쓰기 적용
