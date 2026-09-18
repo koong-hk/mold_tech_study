@@ -176,6 +176,7 @@ IMAGE_DIR = "saved_images"
 if not os.path.exists(IMAGE_DIR):
     os.makedirs(IMAGE_DIR, exist_ok=True)
 
+# 통합 CSS 스타일 설정 (중복 구문 제거 및 5:5 비율 폭 100% 강제 고정)
 st.markdown("""
     <style>
         /* 1. 메인 영역 상단 여백 최소화 */
@@ -184,14 +185,13 @@ st.markdown("""
             padding-bottom: 1.5rem !important;
         }
         
-        /* 2. 제목 글자 크기 및 여백 축소 */
         div[data-testid="stMarkdownContainer"] h1 {
             font-size: 1.4rem !important;
             margin-top: 0px !important;
             margin-bottom: 0.8rem !important;
         }
 
-        /* 3. 좌측 사이드바 폭 및 수직 수평 간격 축소 */
+        /* 2. 사이드바 너비 및 간격 설정 */
         section[data-testid="stSidebar"] {
             width: 280px !important;
         }
@@ -201,111 +201,88 @@ st.markdown("""
             padding-top: 0.2rem !important;
         }
 
-        section[data-testid="stSidebar"] div[data-testid="stElementContainer"] {
-            margin-bottom: 2px !important;
-        }
-
-        /* 4. 파일 업로더 너비 100% 확대 */
-        div[data-testid="stFileUploader"] {
-            width: 100% !important;
-            padding: 0px !important;
-            margin-bottom: 0.2rem !important;
-        }
-
-        div[data-testid="stFileUploader"] section[data-testid="stFileUploaderDropzone"] {
-            padding: 4px 8px !important;
-            min-height: 48px !important;
-            width: 100% !important;
-        }
-
-        /* 5. 사이드바 버튼 전체 100% 너비, 블랙 배경 & 흰색 글자 스타일 지정 */
-        div.stButton > button {
-            display: inline-flex !important;
-            justify-content: center !important;
+        /* 3. 사이드바 D-Day 5:5 컬럼 영역 폭 100% 및 Flex Shrink 방지 */
+        section[data-testid="stSidebar"] div[data-testid="stHorizontalBlock"] {
+            gap: 6px !important;
             align-items: center !important;
-            text-align: center !important;
-            margin-top: 2px !important;
-            margin-bottom: 2px !important;
-            padding: 4px 12px !important;
-            min-height: 32px !important;
-            height: 32px !important;
             width: 100% !important;
-            border-radius: 8px !important;
+            margin-top: 8px !important;
         }
-        
-        section[data-testid="stSidebar"] div.stButton > button {
+
+        section[data-testid="stSidebar"] div[data-testid="stColumn"] {
+            min-width: 0 !important;
             width: 100% !important;
-            font-size: 0.82rem !important;
+            flex: 1 1 0% !important; /* 컬럼 비율 5:5 균등 분할 */
+            margin: 0 !important;
+            padding: 0 !important;
+        }
+
+        /* 컬럼 내 마크다운 래퍼 및 p 태그 폭 100% 강제 확장 */
+        section[data-testid="stSidebar"] div[data-testid="stColumn"] > div,
+        section[data-testid="stSidebar"] div[data-testid="stColumn"] div[data-testid="stElementContainer"],
+        section[data-testid="stSidebar"] div[data-testid="stColumn"] div[data-testid="stMarkdownContainer"] {
+            margin: 0 !important;
+            padding: 0 !important;
+            height: 34px !important;
+            width: 100% !important;
+            min-width: 0 !important;
+            display: flex !important;
+            flex: 1 1 100% !important; /* Flex 내에서 너비 꽉 차게 확장 */
+            align-items: center !important;
+        }
+
+        section[data-testid="stSidebar"] div[data-testid="stColumn"] div[data-testid="stMarkdownContainer"] p {
+            margin: 0 !important;
+            padding: 0 !important;
+            width: 100% !important;
+            flex: 1 1 100% !important;
+            line-height: 1 !important;
+        }
+
+        /* 4. 좌측 D-Day 설정 버튼 스타일 */
+        section[data-testid="stSidebar"] div[data-testid="stColumn"] div.stButton {
+            margin: 0 !important;
+            padding: 0 !important;
+            width: 100% !important;
+            height: 34px !important;
+        }
+
+        section[data-testid="stSidebar"] div[data-testid="stColumn"] div.stButton > button {
+            width: 100% !important;
+            height: 34px !important;
+            min-height: 34px !important;
+            max-height: 34px !important;
+            margin: 0 !important;
+            padding: 0 4px !important;
+            box-sizing: border-box !important;
+            font-size: 0.8rem !important;
             background-color: #000000 !important;
             color: #ffffff !important;
             border: 1px solid #444444 !important;
-            transition: all 0.2s ease;
+            border-radius: 8px !important;
+            white-space: nowrap !important;
         }
 
-        section[data-testid="stSidebar"] div.stButton > button:hover {
-            background-color: #222222 !important;
-            color: #ffffff !important;
-            border-color: #666666 !important;
-        }
-
-        div.stButton > button p {
-            margin: 0 !important;
-            padding: 0 !important;
-            text-align: center !important;
-            font-size: 0.82rem !important;
-            color: #ffffff !important;
-        }
-
-        /* 6. 사이드바 필터 라벨 및 드롭다운 밀도 조정 */
-        section[data-testid="stSidebar"] label {
-            text-align: left !important;
-            justify-content: flex-start !important;
-            margin-bottom: 0px !important;
-            padding: 0px !important;
-        }
-        
-        section[data-testid="stSidebar"] label p {
-            font-size: 0.82rem !important;
-            font-weight: 600 !important;
-            margin: 0 !important;
-            padding: 0 !important;
-        }
-
-        section[data-testid="stSidebar"] div[data-testid="stSelectbox"],
-        section[data-testid="stSidebar"] div[data-testid="stMultiSelect"],
-        section[data-testid="stSidebar"] div[data-testid="stTextInput"] {
-            margin-bottom: 4px !important;
-            margin-top: 0px !important;
-            padding: 0px !important;
-        }
-
-        section[data-testid="stSidebar"] div[data-baseweb="select"] > div {
-            min-height: 32px !important;
-            padding: 0px 6px !important;
-            display: flex !important;
-            align-items: center !important;
-        }
-
-        section[data-testid="stSidebar"] div[data-baseweb="select"] * {
-            font-size: 0.82rem !important;
-            line-height: 1.1 !important;
-        }
-
-        /* 7. D-Day 표시 박스 커스텀 */
+        /* 5. 우측 D-Day 표시 박스 스타일 (100% 채움 고정) */
         .dday-box {
             background-color: #000000;
             color: #ffffff;
             font-weight: bold;
-            font-size: 0.88rem;
-            line-height: 30px;
-            text-align: center;
+            font-size: 0.85rem;
+            height: 34px !important;
+            min-height: 34px !important;
+            max-height: 34px !important;
             border-radius: 8px;
-            height: 32px;
             border: 1px solid #444444;
-            width: 100%;
-            box-sizing: border-box;
-            margin-top: 2px;
-            margin-bottom: 2px;
+            width: 100% !important;
+            flex: 1 1 100% !important;
+            box-sizing: border-box !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            line-height: 1 !important;
         }
     </style>
 """, unsafe_allow_html=True)
@@ -401,104 +378,10 @@ with st.sidebar:
     # -------------------------------------------------------------------------
     st.markdown("<div style='margin-top: 20px; border-top: 1px solid #333333; padding-top: 12px;'></div>", unsafe_allow_html=True)
 
-    # 사이드바 하단 CSS 보정 (5:5 비율 폭 통일 및 달력 간격 최소 유지)
-    st.markdown("""
-        <style>
-        /* 수평 버튼 블록: 달력과의 간격(margin-top) 지정 및 폭 100% 설정 */
-        section[data-testid="stSidebar"] div[data-testid="stHorizontalBlock"] {
-            gap: 6px !important;
-            align-items: center !important;
-            width: 100% !important;
-            margin-top: 8px !important; /* 달력과 붙지 않는 최소 정돈 간격 */
-        }
-
-        /* 5:5 컬럼 영역 폭 100% 확보 */
-        section[data-testid="stSidebar"] div[data-testid="stColumn"] {
-            min-width: 0 !important;
-            width: 100% !important;
-            margin: 0 !important;
-            padding: 0 !important;
-        }
-
-        /* 컬럼 내부 래퍼 요소 규격 통일 */
-        section[data-testid="stSidebar"] div[data-testid="stColumn"] > div,
-        section[data-testid="stSidebar"] div[data-testid="stColumn"] div[data-testid="stElementContainer"],
-        section[data-testid="stSidebar"] div[data-testid="stColumn"] div[data-testid="stMarkdownContainer"] {
-            margin: 0 !important;
-            padding: 0 !important;
-            height: 34px !important;
-            width: 100% !important;
-            min-width: 0 !important;
-            display: flex !important;
-            align-items: center !important;
-        }
-
-        section[data-testid="stSidebar"] div[data-testid="stColumn"] div[data-testid="stMarkdownContainer"] p {
-            margin: 0 !important;
-            padding: 0 !important;
-            width: 100% !important;
-            line-height: 1 !important;
-        }
-
-        /* 좌측 D-Day 설정 버튼 디테일 */
-        section[data-testid="stSidebar"] div[data-testid="stColumn"] div.stButton {
-            margin: 0 !important;
-            padding: 0 !important;
-            width: 100% !important;
-            height: 34px !important;
-        }
-
-        section[data-testid="stSidebar"] div[data-testid="stColumn"] div.stButton > button {
-            width: 100% !important;
-            height: 34px !important;
-            min-height: 34px !important;
-            max-height: 34px !important;
-            margin: 0 !important;
-            padding: 0 4px !important;
-            box-sizing: border-box !important;
-            font-size: 0.8rem !important;
-            background-color: #000000 !important;
-            color: #ffffff !important;
-            border: 1px solid #444444 !important;
-            border-radius: 8px !important;
-            line-height: 1 !important;
-            white-space: nowrap !important;
-        }
-
-        section[data-testid="stSidebar"] div[data-testid="stColumn"] div.stButton > button:hover {
-            background-color: #222222 !important;
-            border-color: #666666 !important;
-        }
-
-        /* 우측 D-Day 표시 박스 디테일 */
-        .dday-box {
-            background-color: #000000;
-            color: #ffffff;
-            font-weight: bold;
-            font-size: 0.85rem;
-            height: 34px !important;
-            min-height: 34px !important;
-            max-height: 34px !important;
-            border-radius: 8px;
-            border: 1px solid #444444;
-            width: 100% !important;
-            box-sizing: border-box !important;
-            margin: 0 !important;
-            padding: 0 !important;
-            display: flex !important;
-            align-items: center !important;
-            justify-content: center !important;
-            line-height: 1 !important;
-        }
-        </style>
-    """, unsafe_allow_html=True)
-
     # 블랙 배경 미니 달력 출력
     st.markdown(render_mini_calendar(), unsafe_allow_html=True)
 
-    # -------------------------------------------------------------------------
-    # D-Day 표시 계산
-    # -------------------------------------------------------------------------
+    # D-Day 계산
     today_date = get_kst_today()
     if st.session_state.d_day_target:
         target_dt = datetime.strptime(st.session_state.d_day_target, "%Y-%m-%d").date()
@@ -512,7 +395,7 @@ with st.sidebar:
     else:
         d_day_str = "D-XX"
 
-    # [수정] 좌/우 5:5 비율 (50:50) 분할 적용
+    # 좌/우 5:5 비율 균등 분할
     col_d_btn, col_d_disp = st.columns([50, 50], gap="small", vertical_alignment="center")
 
     with col_d_btn:
@@ -522,7 +405,7 @@ with st.sidebar:
     with col_d_disp:
         st.markdown(f"<div class='dday-box'>{d_day_str}</div>", unsafe_allow_html=True)
 
-    # D-Day 날짜 선택 피커 (버튼 클릭 시 표시)
+    # 날짜 피커
     if st.session_state.show_d_day_picker:
         default_val = datetime.strptime(st.session_state.d_day_target, "%Y-%m-%d").date() if st.session_state.d_day_target else get_kst_today()
         selected_date = st.date_input("목표 시험일 선택", value=default_val, key="d_day_picker_input")
