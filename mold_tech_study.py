@@ -175,7 +175,7 @@ if "current_q" not in st.session_state:
     st.session_state.current_q = None
 
 # -----------------------------------------------------------------------------
-# 6. 정제된 CSS 스타일 적용 (필터 간격 확장 & 선택박스 내부 줄간격 최소화)
+# 6. 정제된 CSS 스타일 적용 (우측 탭 영역 들여쓰기 및 줄바꿈 라인 정렬 추가)
 # -----------------------------------------------------------------------------
 st.markdown("""
     <style>
@@ -241,26 +241,21 @@ st.markdown("""
             margin: 0 !important;
         }
 
-        /* =================================================================== */
-        /* 5. [수정] 선택박스 내부 글자 줄간격(line-height) 및 패딩 최소화 */
-        /* =================================================================== */
-        /* 텍스트 입력창 및 선택박스/드롭다운 전체 텍스트 줄간격 축소 */
+        /* 5. 선택박스 내부 글자 줄간격(line-height) 및 패딩 최소화 */
         section[data-testid="stSidebar"] input,
         section[data-testid="stSidebar"] div[data-baseweb="select"] *,
         div[data-baseweb="popover"] * {
             font-size: 0.8rem !important;
             letter-spacing: -0.4px !important;
-            line-height: 1.0 !important; /* 줄간격을 1.0으로 강제 축소 */
+            line-height: 1.0 !important;
         }
 
-        /* 선택박스 내부 컨테이너 높이 및 세로 패딩 조절 */
         section[data-testid="stSidebar"] div[data-baseweb="select"] > div {
             min-height: 30px !important;
             padding: 1px 4px !important;
             line-height: 1.0 !important;
         }
 
-        /* 멀티셀렉트 태그(Pill) 내부 줄간격 및 높이 슬림화 */
         section[data-testid="stSidebar"] div[data-baseweb="tag"] {
             margin: 1px 2px !important;
             padding: 0px 4px !important;
@@ -275,14 +270,42 @@ st.markdown("""
             line-height: 1.0 !important;
         }
 
-        /* Checkbox 라벨 자간 및 줄간격 */
         section[data-testid="stSidebar"] div[data-testid="stCheckbox"] span {
             font-size: 0.8rem !important;
             letter-spacing: -0.3px !important;
             line-height: 1.1 !important;
         }
 
-        /* 6. D-Day 레이아웃 및 우측 박스 가로 100% 보정 */
+        /* =================================================================== */
+        /* 6. [신규 추가] 우측 탭 영역 단락 들여쓰기 및 수직 라인 자동 정렬 */
+        /* =================================================================== */
+        /* 1) 탭 내부의 마크다운 단락(<p>) 들여쓰기 및 줄바꿈 라인 통일 */
+        div[data-testid="stTabPanel"] div[data-testid="stMarkdownContainer"] p {
+            margin-left: 1.2rem !important;      /* 제목 아래 단락 들여쓰기 적용 */
+            word-break: keep-all !important;     /* 한글 단어 단위 정갈한 줄바꿈 */
+            overflow-wrap: break-word !important;
+            line-height: 1.65 !important;        /* 읽기 편한 행간 고정 */
+        }
+
+        /* 2) 제목/헤더(h1~h6) 항목은 기준선(0px)에 위치 */
+        div[data-testid="stTabPanel"] h1,
+        div[data-testid="stTabPanel"] h2,
+        div[data-testid="stTabPanel"] h3,
+        div[data-testid="stTabPanel"] h4,
+        div[data-testid="stTabPanel"] h5,
+        div[data-testid="stTabPanel"] h6 {
+            margin-left: 0px !important;
+            margin-bottom: 0.4rem !important;
+        }
+
+        /* 3) 내용 입력창(st.text_area) 내부 들여쓰기 및 정렬 적용 */
+        div[data-testid="stTabPanel"] textarea {
+            padding-left: 1.2rem !important;     /* 입력 시작점 들여쓰기 */
+            line-height: 1.65 !important;
+            word-break: keep-all !important;
+        }
+
+        /* 7. D-Day 레이아웃 및 우측 박스 가로 100% 보정 */
         section[data-testid="stSidebar"] div[data-testid="stHorizontalBlock"] {
             gap: 6px !important;
             align-items: center !important;
