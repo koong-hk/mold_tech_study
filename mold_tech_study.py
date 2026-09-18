@@ -175,11 +175,11 @@ if "current_q" not in st.session_state:
     st.session_state.current_q = None
 
 # -----------------------------------------------------------------------------
-# 6. 정제된 CSS 스타일 적용 (충돌 및 깨짐 완벽 방지)
+# 6. 정제된 CSS 스타일 적용 (필터 간격 확장 & 선택박스 글자 간격 축소)
 # -----------------------------------------------------------------------------
 st.markdown("""
     <style>
-        /* 기본 메인 레이아웃 패딩 최소화 */
+        /* 1. 메인 영역 패딩 최소화 */
         .block-container {
             padding-top: 2.0rem !important;
             padding-bottom: 1.5rem !important;
@@ -191,17 +191,12 @@ st.markdown("""
             margin-bottom: 0.8rem !important;
         }
 
-        /* 사이드바 기본 크기 지정 */
+        /* 2. 사이드바 너비 지정 */
         section[data-testid="stSidebar"] {
             width: 280px !important;
         }
-        
-        section[data-testid="stSidebar"] div[data-testid="stVerticalBlock"] {
-            gap: 0.2rem !important;
-            padding-top: 0.2rem !important;
-        }
 
-        /* 사이드바 기본 버튼 스타일 (블랙 테마) */
+        /* 3. 사이드바 기본 버튼 스타일 (블랙 테마) */
         section[data-testid="stSidebar"] div.stButton > button {
             width: 100% !important;
             height: 34px !important;
@@ -213,6 +208,7 @@ st.markdown("""
             border-radius: 8px !important;
             box-sizing: border-box !important;
             padding: 0 4px !important;
+            letter-spacing: -0.3px !important;
         }
 
         section[data-testid="stSidebar"] div.stButton > button:hover {
@@ -220,7 +216,71 @@ st.markdown("""
             border-color: #666666 !important;
         }
 
-        /* D-Day 컨테이너 및 컬럼 레벨 마크다운 확장 보정 */
+        /* =================================================================== */
+        /* 4. [요청 1] 필터링 영역 항목 간 여백 확장 (간격 늘림) */
+        /* =================================================================== */
+        section[data-testid="stSidebar"] div[data-testid="stTextInput"],
+        section[data-testid="stSidebar"] div[data-testid="stSelectbox"],
+        section[data-testid="stSidebar"] div[data-testid="stMultiSelect"] {
+            margin-bottom: 12px !important; /* 필터 박스 간 간격을 12px로 넓혀 가독성 향상 */
+            margin-top: 2px !important;
+        }
+
+        section[data-testid="stSidebar"] div[data-testid="stCheckbox"] {
+            margin-top: 8px !important;
+            margin-bottom: 12px !important;
+        }
+
+        section[data-testid="stSidebar"] label {
+            margin-bottom: 3px !important;
+            padding: 0 !important;
+        }
+
+        section[data-testid="stSidebar"] label p {
+            font-size: 0.82rem !important;
+            font-weight: 600 !important;
+            letter-spacing: -0.3px !important; /* 라벨 자간 축소 */
+            margin: 0 !important;
+        }
+
+        /* =================================================================== */
+        /* 5. [요청 2] 선택박스 내부 글자 간격(자간) 및 태그 밀도 축소 */
+        /* =================================================================== */
+        /* 텍스트 입력창 및 드롭다운 내부 자간/폰트 세팅 */
+        section[data-testid="stSidebar"] input,
+        section[data-testid="stSidebar"] div[data-baseweb="select"] * {
+            font-size: 0.8rem !important;
+            letter-spacing: -0.4px !important; /* 글자 간격(자간)을 촘촘하게 설정 */
+            line-height: 1.1 !important;
+        }
+
+        section[data-testid="stSidebar"] div[data-baseweb="select"] > div {
+            min-height: 32px !important;
+            padding: 2px 6px !important;
+        }
+
+        /* 멀티셀렉트 선택된 태그(Pill) 크기 및 자간 촘촘하게 축소 */
+        section[data-testid="stSidebar"] div[data-baseweb="tag"] {
+            margin: 1px 2px !important;
+            padding: 0px 5px !important;
+            height: 22px !important;
+            border-radius: 4px !important;
+        }
+
+        section[data-testid="stSidebar"] div[data-baseweb="tag"] span {
+            font-size: 0.75rem !important;
+            letter-spacing: -0.4px !important; /* 선택 태그 글자 간격 축소 */
+        }
+
+        /* Checkbox 라벨 자간 조정 */
+        section[data-testid="stSidebar"] div[data-testid="stCheckbox"] span {
+            font-size: 0.8rem !important;
+            letter-spacing: -0.3px !important;
+        }
+
+        /* =================================================================== */
+        /* 6. D-Day 레이아웃 및 우측 박스 가로 100% 보정 */
+        /* =================================================================== */
         section[data-testid="stSidebar"] div[data-testid="stHorizontalBlock"] {
             gap: 6px !important;
             align-items: center !important;
@@ -228,7 +288,6 @@ st.markdown("""
             margin-top: 6px !important;
         }
 
-        /* stMarkdownContainer 가두기 해제 */
         section[data-testid="stSidebar"] div[data-testid="stMarkdownContainer"],
         section[data-testid="stSidebar"] div[data-testid="stMarkdownContainer"] > p {
             width: 100% !important;
@@ -236,12 +295,12 @@ st.markdown("""
             padding: 0 !important;
         }
 
-        /* 우측 D-Day 표시 박스 (5:5 비율 가로 100% 확장) */
         .dday-box {
             background-color: #000000;
             color: #ffffff;
             font-weight: bold;
             font-size: 0.85rem;
+            letter-spacing: -0.2px;
             height: 34px !important;
             line-height: 32px !important;
             text-align: center;
