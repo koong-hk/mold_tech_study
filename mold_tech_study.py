@@ -141,7 +141,7 @@ def format_readable_text(text: str) -> str:
     def clean_latex_block(match):
         formula = match.group(1)
         formula_clean = re.sub(r'_\{([a-zA-Z0-9_\-]+)\}', r'_{\\text{\1}}', formula)
-        return f"\n$$\n{formula_clean}\n$$\n"
+        return f"\n\n$$\n{formula_clean}\n$$\n\n"
 
     text_str = re.sub(r'\$\$(.*?)\$\$', clean_latex_block, text_str, flags=re.DOTALL)
 
@@ -160,7 +160,7 @@ def format_readable_text(text: str) -> str:
             new_lines.append(line)
             continue
         
-        # [수정] 불릿 기호(*, -, •, 숫자.), 항목명, 콜론, 본문 내용을 명확히 분리하는 정규식
+        # 불릿 기호(*, -, •, 숫자.), 항목명, 콜론, 본문 내용을 명확히 분리하는 정규식
         match = re.match(r'^\s*(?P<bullet>(?:\d+\.|\-|\*|\•)?)\s*(?P<label>[^:\n]{1,30}:)\s*(?P<tail>.+)$', line)
         if match:
             bullet = match.group('bullet') or ''
@@ -169,11 +169,10 @@ def format_readable_text(text: str) -> str:
             
             # 시간 표시(예: 12:30)가 아닌 경우에만 Flex 들여쓰기 적용
             if not re.match(r'^\s*\d{1,2}:\d{2}', line):
-                # [보정 1] 마크다운 볼드(**) 기호 제거
                 label_clean = label.replace('**', '').strip()
                 tail_clean = re.sub(r'^\s*\*\*\s*', '', tail).strip()
                 
-                # [보정 2] 불릿 기호 정제 (* 또는 - 는 깔끔한 '• ' 로 변환, 숫자는 그대로 유지)
+                # 불릿 기호 정제 (* 또는 - 는 깔끔한 '• ' 로 변환)
                 if bullet in ['*', '-']:
                     bullet_prefix = '• '
                 elif bullet:
@@ -183,21 +182,20 @@ def format_readable_text(text: str) -> str:
                 
                 head_final = f"{bullet_prefix}{label_clean}"
                 
-                new_lines.append(f'<div class="colon-line"><span class="colon-head">{head_final}</span><span class="colon-tail">{tail_clean}</span></div>')
+                # 마크다운 독립 블록 인식을 위해 빈 줄 구분자(\n) 추가
+                new_lines.append(f'<div class="colon-line"><span class="colon-head">{head_final}</span><span class="colon-tail">{tail_clean}</span></div>\n')
                 continue
         
-        # [보정 3] 이전 줄이 colon-line이고, 현재 줄에 새 항목 기호나 콜론이 없으면 이전 tail 내부로 병합
-        if new_lines and new_lines[-1].endswith('</div>') and not re.match(r'^\s*(?:\d+\.|\-|\*|\•|\#)', line):
-            last_line = new_lines.pop()
-            merged_line = re.sub(r'</span>\s*</div>$', f' {stripped_line}</span></div>', last_line)
+        # 이전 줄이 colon-line이고 현재 줄이 새로운 항목이 아니라면 이전 tail 내부로 병합
+        if new_lines and 'colon-tail' in new_lines[-1] and not re.match(r'^\s*(?:\d+\.|\-|\*|\•|\#)', line):
+            last_line = new_lines.pop().strip()
+            merged_line = re.sub(r'</span>\s*</div>$', f' {stripped_line}</span></div>\n', last_line)
             new_lines.append(merged_line)
             continue
 
         new_lines.append(line)
 
     return '\n'.join(new_lines)
-
-
 
 # -----------------------------------------------------------------------------
 # 5. 세션 상태 초기화
