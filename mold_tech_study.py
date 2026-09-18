@@ -175,7 +175,7 @@ if "current_q" not in st.session_state:
     st.session_state.current_q = None
 
 # -----------------------------------------------------------------------------
-# 6. 정제된 CSS 스타일 적용 (필터 간격 확장 & 선택박스 글자 간격 축소)
+# 6. 정제된 CSS 스타일 적용 (필터 간격 확장 & 선택박스 내부 줄간격 최소화)
 # -----------------------------------------------------------------------------
 st.markdown("""
     <style>
@@ -216,13 +216,11 @@ st.markdown("""
             border-color: #666666 !important;
         }
 
-        /* =================================================================== */
-        /* 4. [요청 1] 필터링 영역 항목 간 여백 확장 (간격 늘림) */
-        /* =================================================================== */
+        /* 4. 필터링 영역 항목 간 여백 지정 */
         section[data-testid="stSidebar"] div[data-testid="stTextInput"],
         section[data-testid="stSidebar"] div[data-testid="stSelectbox"],
         section[data-testid="stSidebar"] div[data-testid="stMultiSelect"] {
-            margin-bottom: 12px !important; /* 필터 박스 간 간격을 12px로 넓혀 가독성 향상 */
+            margin-bottom: 12px !important;
             margin-top: 2px !important;
         }
 
@@ -239,48 +237,52 @@ st.markdown("""
         section[data-testid="stSidebar"] label p {
             font-size: 0.82rem !important;
             font-weight: 600 !important;
-            letter-spacing: -0.3px !important; /* 라벨 자간 축소 */
+            letter-spacing: -0.3px !important;
             margin: 0 !important;
         }
 
         /* =================================================================== */
-        /* 5. [요청 2] 선택박스 내부 글자 간격(자간) 및 태그 밀도 축소 */
+        /* 5. [수정] 선택박스 내부 글자 줄간격(line-height) 및 패딩 최소화 */
         /* =================================================================== */
-        /* 텍스트 입력창 및 드롭다운 내부 자간/폰트 세팅 */
+        /* 텍스트 입력창 및 선택박스/드롭다운 전체 텍스트 줄간격 축소 */
         section[data-testid="stSidebar"] input,
-        section[data-testid="stSidebar"] div[data-baseweb="select"] * {
+        section[data-testid="stSidebar"] div[data-baseweb="select"] *,
+        div[data-baseweb="popover"] * {
             font-size: 0.8rem !important;
-            letter-spacing: -0.4px !important; /* 글자 간격(자간)을 촘촘하게 설정 */
-            line-height: 1.1 !important;
+            letter-spacing: -0.4px !important;
+            line-height: 1.0 !important; /* 줄간격을 1.0으로 강제 축소 */
         }
 
+        /* 선택박스 내부 컨테이너 높이 및 세로 패딩 조절 */
         section[data-testid="stSidebar"] div[data-baseweb="select"] > div {
-            min-height: 32px !important;
-            padding: 2px 6px !important;
+            min-height: 30px !important;
+            padding: 1px 4px !important;
+            line-height: 1.0 !important;
         }
 
-        /* 멀티셀렉트 선택된 태그(Pill) 크기 및 자간 촘촘하게 축소 */
+        /* 멀티셀렉트 태그(Pill) 내부 줄간격 및 높이 슬림화 */
         section[data-testid="stSidebar"] div[data-baseweb="tag"] {
             margin: 1px 2px !important;
-            padding: 0px 5px !important;
-            height: 22px !important;
+            padding: 0px 4px !important;
+            height: 20px !important;
+            line-height: 1.0 !important;
             border-radius: 4px !important;
         }
 
         section[data-testid="stSidebar"] div[data-baseweb="tag"] span {
             font-size: 0.75rem !important;
-            letter-spacing: -0.4px !important; /* 선택 태그 글자 간격 축소 */
+            letter-spacing: -0.4px !important;
+            line-height: 1.0 !important;
         }
 
-        /* Checkbox 라벨 자간 조정 */
+        /* Checkbox 라벨 자간 및 줄간격 */
         section[data-testid="stSidebar"] div[data-testid="stCheckbox"] span {
             font-size: 0.8rem !important;
             letter-spacing: -0.3px !important;
+            line-height: 1.1 !important;
         }
 
-        /* =================================================================== */
         /* 6. D-Day 레이아웃 및 우측 박스 가로 100% 보정 */
-        /* =================================================================== */
         section[data-testid="stSidebar"] div[data-testid="stHorizontalBlock"] {
             gap: 6px !important;
             align-items: center !important;
