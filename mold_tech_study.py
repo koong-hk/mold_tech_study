@@ -399,30 +399,28 @@ with st.sidebar:
     # -------------------------------------------------------------------------
     # 4. 사이드바 하단: 미니 달력 & D-Day 영역
     # -------------------------------------------------------------------------
-    st.markdown("<div style='margin-top: 25px; border-top: 1px solid #333333; padding-top: 15px;'></div>", unsafe_allow_html=True)
+    st.markdown("<div style='margin-top: 20px; border-top: 1px solid #333333; padding-top: 12px;'></div>", unsafe_allow_html=True)
 
-    # 사이드바 하단 컬럼 및 내부 요소 100% 폭 강제 확장 CSS
+    # 사이드바 하단 CSS 보정 (5:5 비율 폭 통일 및 달력 간격 최소 유지)
     st.markdown("""
         <style>
-        /* 수평 블록 전체 너비 확보 및 간격 설정 */
+        /* 수평 버튼 블록: 달력과의 간격(margin-top) 지정 및 폭 100% 설정 */
         section[data-testid="stSidebar"] div[data-testid="stHorizontalBlock"] {
-            gap: 4px !important;
+            gap: 6px !important;
             align-items: center !important;
             width: 100% !important;
+            margin-top: 8px !important; /* 달력과 붙지 않는 최소 정돈 간격 */
         }
 
-        /* 각 컬럼 컨테이너의 min-width 제약 해제 및 폭 100% 설정 */
+        /* 5:5 컬럼 영역 폭 100% 확보 */
         section[data-testid="stSidebar"] div[data-testid="stColumn"] {
             min-width: 0 !important;
             width: 100% !important;
-            display: flex !important;
-            flex-direction: column !important;
-            justify-content: center !important;
             margin: 0 !important;
             padding: 0 !important;
         }
 
-        /* 컬럼 내부 모든 래퍼 디브(ElementContainer, MarkdownContainer) 100% 확장 */
+        /* 컬럼 내부 래퍼 요소 규격 통일 */
         section[data-testid="stSidebar"] div[data-testid="stColumn"] > div,
         section[data-testid="stSidebar"] div[data-testid="stColumn"] div[data-testid="stElementContainer"],
         section[data-testid="stSidebar"] div[data-testid="stColumn"] div[data-testid="stMarkdownContainer"] {
@@ -435,7 +433,6 @@ with st.sidebar:
             align-items: center !important;
         }
 
-        /* stMarkdownContainer 내부 p 태그 100% 확장 */
         section[data-testid="stSidebar"] div[data-testid="stColumn"] div[data-testid="stMarkdownContainer"] p {
             margin: 0 !important;
             padding: 0 !important;
@@ -443,7 +440,7 @@ with st.sidebar:
             line-height: 1 !important;
         }
 
-        /* D-Day 좌측 버튼 규격 */
+        /* 좌측 D-Day 설정 버튼 디테일 */
         section[data-testid="stSidebar"] div[data-testid="stColumn"] div.stButton {
             margin: 0 !important;
             padding: 0 !important;
@@ -457,14 +454,15 @@ with st.sidebar:
             min-height: 34px !important;
             max-height: 34px !important;
             margin: 0 !important;
-            padding: 0 6px !important;
+            padding: 0 4px !important;
             box-sizing: border-box !important;
-            font-size: 0.82rem !important;
+            font-size: 0.8rem !important;
             background-color: #000000 !important;
             color: #ffffff !important;
             border: 1px solid #444444 !important;
             border-radius: 8px !important;
             line-height: 1 !important;
+            white-space: nowrap !important;
         }
 
         section[data-testid="stSidebar"] div[data-testid="stColumn"] div.stButton > button:hover {
@@ -472,7 +470,7 @@ with st.sidebar:
             border-color: #666666 !important;
         }
 
-        /* D-Day 우측 디스플레이 박스 (100% 가득 채움) */
+        /* 우측 D-Day 표시 박스 디테일 */
         .dday-box {
             background-color: #000000;
             color: #ffffff;
@@ -514,17 +512,17 @@ with st.sidebar:
     else:
         d_day_str = "D-XX"
 
-    # 수평 정렬용 컬럼 분할 ([30, 70] 비율 유지)
-    col_d_btn, col_d_disp = st.columns([30, 70], gap="small", vertical_alignment="center")
+    # [수정] 좌/우 5:5 비율 (50:50) 분할 적용
+    col_d_btn, col_d_disp = st.columns([50, 50], gap="small", vertical_alignment="center")
 
     with col_d_btn:
-        if st.button("D-Day", use_container_width=True, key="btn_set_dday"):
+        if st.button("D-Day 설정", use_container_width=True, key="btn_set_dday"):
             st.session_state.show_d_day_picker = not st.session_state.show_d_day_picker
 
     with col_d_disp:
         st.markdown(f"<div class='dday-box'>{d_day_str}</div>", unsafe_allow_html=True)
 
-    # D-Day 날짜 선택 피커
+    # D-Day 날짜 선택 피커 (버튼 클릭 시 표시)
     if st.session_state.show_d_day_picker:
         default_val = datetime.strptime(st.session_state.d_day_target, "%Y-%m-%d").date() if st.session_state.d_day_target else get_kst_today()
         selected_date = st.date_input("목표 시험일 선택", value=default_val, key="d_day_picker_input")
