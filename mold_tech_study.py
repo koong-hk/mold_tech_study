@@ -277,17 +277,9 @@ st.markdown("""
         }
 
         /* =================================================================== */
-        /* 6. [신규 추가] 우측 탭 영역 단락 들여쓰기 및 수직 라인 자동 정렬 */
+        /* 6. [수정] 우측 탭 영역 순서 목록(1. 2. 3.) 내어쓰기 및 단락 라인 정렬 */
         /* =================================================================== */
-        /* 1) 탭 내부의 마크다운 단락(<p>) 들여쓰기 및 줄바꿈 라인 통일 */
-        div[data-testid="stTabPanel"] div[data-testid="stMarkdownContainer"] p {
-            margin-left: 1.2rem !important;      /* 제목 아래 단락 들여쓰기 적용 */
-            word-break: keep-all !important;     /* 한글 단어 단위 정갈한 줄바꿈 */
-            overflow-wrap: break-word !important;
-            line-height: 1.65 !important;        /* 읽기 편한 행간 고정 */
-        }
-
-        /* 2) 제목/헤더(h1~h6) 항목은 기준선(0px)에 위치 */
+        /* 1) 제목/헤더(h1~h6) 기준선 고정 */
         div[data-testid="stTabPanel"] h1,
         div[data-testid="stTabPanel"] h2,
         div[data-testid="stTabPanel"] h3,
@@ -295,12 +287,41 @@ st.markdown("""
         div[data-testid="stTabPanel"] h5,
         div[data-testid="stTabPanel"] h6 {
             margin-left: 0px !important;
-            margin-bottom: 0.4rem !important;
+            margin-bottom: 0.5rem !important;
         }
 
-        /* 3) 내용 입력창(st.text_area) 내부 들여쓰기 및 정렬 적용 */
+        /* 2) 일반 본문 단락(<p>) 기본 들여쓰기 */
+        div[data-testid="stTabPanel"] div[data-testid="stMarkdownContainer"] > p {
+            margin-left: 1.2rem !important;
+            word-break: keep-all !important;
+            overflow-wrap: break-word !important;
+            line-height: 1.65 !important;
+        }
+
+        /* 3) 순서 있는 목록(<ol>, <li>) 내어쓰기(Hanging Indent) 및 수직 라인 맞춤 */
+        div[data-testid="stTabPanel"] ol,
+        div[data-testid="stTabPanel"] ul {
+            margin-left: 1.2rem !important;      /* 전체 목록 들여쓰기 */
+            padding-left: 1.2rem !important;     /* 번호(1. 2.)와 본문 사이 적정 간격 */
+            margin-bottom: 0.8rem !important;
+        }
+
+        div[data-testid="stTabPanel"] li {
+            margin-bottom: 0.4rem !important;
+            line-height: 1.65 !important;
+            word-break: keep-all !important;
+            overflow-wrap: break-word !important;
+        }
+
+        /* li 항목 내 p 태그 중복 들여쓰기 방지 (수직 라인 이탈 차단) */
+        div[data-testid="stTabPanel"] li > p {
+            margin-left: 0px !important;
+            display: inline !important;
+        }
+
+        /* 4) 입력창(st.text_area) 내부 줄바꿈 라인 유지 */
         div[data-testid="stTabPanel"] textarea {
-            padding-left: 1.2rem !important;     /* 입력 시작점 들여쓰기 */
+            padding-left: 1.2rem !important;
             line-height: 1.65 !important;
             word-break: keep-all !important;
         }
