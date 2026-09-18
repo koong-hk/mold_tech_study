@@ -401,16 +401,17 @@ with st.sidebar:
     # -------------------------------------------------------------------------
     st.markdown("<div style='margin-top: 25px; border-top: 1px solid #333333; padding-top: 15px;'></div>", unsafe_allow_html=True)
 
-    # 사이드바 하단 정렬 보정 CSS (Streamlit 자동 감싸기 태그 여백 차단)
+    # 사이드바 하단 정렬 및 너비 100% 확장 보정 CSS
     st.markdown("""
         <style>
-        /* 수평 컬럼 간격 밀착 및 세로 중앙 정렬 */
+        /* 수평 컬럼 전체 너비 확보 및 간격 밀착 */
         section[data-testid="stSidebar"] div[data-testid="stHorizontalBlock"] {
             gap: 4px !important;
             align-items: center !important;
+            width: 100% !important;
         }
 
-        /* 컬럼 내 컨테이너 여백/높이 강제 통일 */
+        /* 각 컬럼 수직 정렬 */
         section[data-testid="stSidebar"] div[data-testid="stColumn"] {
             display: flex !important;
             flex-direction: column !important;
@@ -419,16 +420,18 @@ with st.sidebar:
             padding: 0 !important;
         }
 
+        /* 컨테이너 및 마크다운 영역 100% 너비 강제 확장 */
         section[data-testid="stSidebar"] div[data-testid="stColumn"] div[data-testid="stElementContainer"],
         section[data-testid="stSidebar"] div[data-testid="stColumn"] div[data-testid="stMarkdownContainer"] {
             margin: 0 !important;
             padding: 0 !important;
             height: 34px !important;
+            width: 100% !important;
             display: flex !important;
             align-items: center !important;
         }
 
-        /* stMarkdownContainer 내부 자동 생성 <p> 태그 여백 제거 */
+        /* stMarkdownContainer 내부 p 태그 100% 너비 확장 */
         section[data-testid="stSidebar"] div[data-testid="stColumn"] div[data-testid="stMarkdownContainer"] p {
             margin: 0 !important;
             padding: 0 !important;
@@ -465,7 +468,7 @@ with st.sidebar:
             border-color: #666666 !important;
         }
 
-        /* D-Day 디스플레이 박스 규격 */
+        /* D-Day 디스플레이 박스 규격 (100% 너비 보장) */
         .dday-box {
             background-color: #000000;
             color: #ffffff;
@@ -476,13 +479,13 @@ with st.sidebar:
             max-height: 34px !important;
             border-radius: 8px;
             border: 1px solid #444444;
-            width: 100%;
-            box-sizing: border-box;
+            width: 100% !important;
+            box-sizing: border-box !important;
             margin: 0 !important;
             padding: 0 !important;
-            display: flex;
-            align-items: center;
-            justify-content: center;
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
             line-height: 1 !important;
         }
         </style>
@@ -528,6 +531,7 @@ with st.sidebar:
             save_user_data(st.session_state.user_data)
             st.session_state.show_d_day_picker = False
             st.rerun()
+            
 # -----------------------------------------------------------------------------
 # 5. 필터링 조건 적용
 # -----------------------------------------------------------------------------
