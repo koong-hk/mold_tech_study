@@ -124,6 +124,8 @@ def render_mini_calendar():
 
 import re
 
+import re
+
 def format_readable_text(text: str) -> str:
     """노트 본문의 LaTeX 수식 및 콜론(:) 기준 수직 들여쓰기 자동 보정"""
     if not text or not str(text).strip():
@@ -131,7 +133,7 @@ def format_readable_text(text: str) -> str:
     
     text_str = str(text)
     
-    # 1. 괄호 수식 구문 (예: (F_{clamp} = P_{cavity} \times A_{projected})) 자동 변환
+    # 1. 괄호 수식 구문 자동 변환
     def replace_bracket_math(match):
         formula = match.group(1).strip()
         formula_clean = re.sub(r'_\{([a-zA-Z0-9_\-]+)\}', r'_{\\text{\1}}', formula)
@@ -150,13 +152,19 @@ def format_readable_text(text: str) -> str:
     # 3. 콜론(:) 기준 수직 들여쓰기 레이아웃 자동 변환 (Flexbox 연동)
     lines = text_str.split('\n')
     new_lines = []
+    
     for line in lines:
+        stripped_line = line.strip()
+        if not stripped_line:
+            new_lines.append("")
+            continue
+
         # URL, 기존 HTML, 수식 구문은 변환에서 제외
-        if "http://" in line or "https://" in line or "$$" in line or line.strip().startswith("<"):
+        if "http://" in line or "https://" in line or "$$" in line or stripped_line.startswith("<"):
             new_lines.append(line)
             continue
         
-        # "1. 항목명: 내용" 또는 "항목명: 내용" 패턴 감지 (최대 30자 이내 콜론)
+        # "1. 항목명: 내용" 또는 "* **항목명:** 내용" 패턴 감지
         match = re.match(r'^(\s*(?:\d+\.|\-|\*|\•)?\s*[^:\n]{1,30}:)\s*(.+)$', line)
         if match:
             head = match.group(1)  # 콜론까지의 항목명
@@ -164,9 +172,21 @@ def format_readable_text(text: str) -> str:
             
             # 시간 표시(예: 12:30)가 아닌 경우에만 Flex 들여쓰기 적용
             if not re.match(r'^\s*\d{1,2}:\d{2}', line):
-                new_lines.append(f'<div class="colon-line"><span class="colon-head">{head}</span><span class="colon-tail">{tail}</span></div>')
-                continue
+                # [보정 1] head의 ** 제거(CSS가 볼드 처리함) 및 tail 시작 부분의 잉여 ** 제거
+                head_clean = head.replace('**', '')
+                tail_clean = re.sub(r'^\s*\*\*\s*', '', tail)
                 
+                new_lines.append(f'<div class="colon-line"><span class="colon-head">{head_clean}</span><span class="colon-tail">{tail_clean}</span></div>')
+                continue
+        
+        # [보정 2] 이전 줄이 colon-line이고, 현재 줄에 새 목록 기호/콜론이 없으면 이전 tail 내부로 병합
+        if new_lines and new_lines[-1].endswith('</div>') and not re.match(r'^\s*(?:\d+\.|\-|\*|\•)', line):
+            last_line = new_lines.pop()
+            # </div> 및 </span></div> 구조를 유지하면서 tail 내부로 문장 병합
+            merged_line = re.sub(r'</span>\s*</div>$', f' {stripped_line}</span></div>', last_line)
+            new_lines.append(merged_line)
+            continue
+
         new_lines.append(line)
 
     return '\n'.join(new_lines)
