@@ -401,18 +401,20 @@ with st.sidebar:
     # -------------------------------------------------------------------------
     st.markdown("<div style='margin-top: 25px; border-top: 1px solid #333333; padding-top: 15px;'></div>", unsafe_allow_html=True)
 
-    # 사이드바 하단 정렬 및 너비 100% 확장 보정 CSS
+    # 사이드바 하단 컬럼 및 내부 요소 100% 폭 강제 확장 CSS
     st.markdown("""
         <style>
-        /* 수평 컬럼 전체 너비 확보 및 간격 밀착 */
+        /* 수평 블록 전체 너비 확보 및 간격 설정 */
         section[data-testid="stSidebar"] div[data-testid="stHorizontalBlock"] {
             gap: 4px !important;
             align-items: center !important;
             width: 100% !important;
         }
 
-        /* 각 컬럼 수직 정렬 */
+        /* 각 컬럼 컨테이너의 min-width 제약 해제 및 폭 100% 설정 */
         section[data-testid="stSidebar"] div[data-testid="stColumn"] {
+            min-width: 0 !important;
+            width: 100% !important;
             display: flex !important;
             flex-direction: column !important;
             justify-content: center !important;
@@ -420,18 +422,20 @@ with st.sidebar:
             padding: 0 !important;
         }
 
-        /* 컨테이너 및 마크다운 영역 100% 너비 강제 확장 */
+        /* 컬럼 내부 모든 래퍼 디브(ElementContainer, MarkdownContainer) 100% 확장 */
+        section[data-testid="stSidebar"] div[data-testid="stColumn"] > div,
         section[data-testid="stSidebar"] div[data-testid="stColumn"] div[data-testid="stElementContainer"],
         section[data-testid="stSidebar"] div[data-testid="stColumn"] div[data-testid="stMarkdownContainer"] {
             margin: 0 !important;
             padding: 0 !important;
             height: 34px !important;
             width: 100% !important;
+            min-width: 0 !important;
             display: flex !important;
             align-items: center !important;
         }
 
-        /* stMarkdownContainer 내부 p 태그 100% 너비 확장 */
+        /* stMarkdownContainer 내부 p 태그 100% 확장 */
         section[data-testid="stSidebar"] div[data-testid="stColumn"] div[data-testid="stMarkdownContainer"] p {
             margin: 0 !important;
             padding: 0 !important;
@@ -439,7 +443,7 @@ with st.sidebar:
             line-height: 1 !important;
         }
 
-        /* D-Day 버튼 규격 */
+        /* D-Day 좌측 버튼 규격 */
         section[data-testid="stSidebar"] div[data-testid="stColumn"] div.stButton {
             margin: 0 !important;
             padding: 0 !important;
@@ -468,7 +472,7 @@ with st.sidebar:
             border-color: #666666 !important;
         }
 
-        /* D-Day 디스플레이 박스 규격 (100% 너비 보장) */
+        /* D-Day 우측 디스플레이 박스 (100% 가득 채움) */
         .dday-box {
             background-color: #000000;
             color: #ffffff;
@@ -510,7 +514,7 @@ with st.sidebar:
     else:
         d_day_str = "D-XX"
 
-    # 수평 정렬용 컬럼 분할
+    # 수평 정렬용 컬럼 분할 ([30, 70] 비율 유지)
     col_d_btn, col_d_disp = st.columns([30, 70], gap="small", vertical_alignment="center")
 
     with col_d_btn:
@@ -520,7 +524,7 @@ with st.sidebar:
     with col_d_disp:
         st.markdown(f"<div class='dday-box'>{d_day_str}</div>", unsafe_allow_html=True)
 
-    # D-Day 날짜 선택 피커 (버튼 클릭 시 표시)
+    # D-Day 날짜 선택 피커
     if st.session_state.show_d_day_picker:
         default_val = datetime.strptime(st.session_state.d_day_target, "%Y-%m-%d").date() if st.session_state.d_day_target else get_kst_today()
         selected_date = st.date_input("목표 시험일 선택", value=default_val, key="d_day_picker_input")
