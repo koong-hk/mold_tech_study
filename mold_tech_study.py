@@ -122,6 +122,8 @@ def render_mini_calendar():
     html += "</tbody></table></div>"
     return html
 
+import re
+
 def format_readable_text(text: str) -> str:
     """노트 본문의 LaTeX 수식 및 콜론(:) 기준 수직 들여쓰기 자동 보정"""
     if not text or not str(text).strip():
@@ -155,8 +157,8 @@ def format_readable_text(text: str) -> str:
             new_lines.append("")
             continue
 
-        # URL, 기존 HTML, 수식 구문, 마크다운 제목(#)은 변환에서 제외
-        if "http://" in line or "https://" in line or "$$" in line or stripped_line.startswith("<") or stripped_line.startswith("#"):
+        # URL, 기존 HTML, 수식 구문, 마크다운 제목(#), 구분선(---)은 변환에서 제외
+        if "http://" in line or "https://" in line or "$$" in line or stripped_line.startswith("<") or stripped_line.startswith("#") or stripped_line == "---":
             new_lines.append(line)
             continue
         
@@ -172,7 +174,10 @@ def format_readable_text(text: str) -> str:
                 label_clean = label.replace('**', '').strip()
                 tail_clean = re.sub(r'^\s*\*\*\s*', '', tail).strip()
                 
-                # 불릿 기호 정제 (* 또는 - 는 깔끔한 '• ' 로 변환)
+                # HTML 태그 내부 마크다운 볼드(**)를 HTML <b> 태그로 자동 변환
+                tail_clean = re.sub(r'\*\*(.*?)\*\*', r'<b>\1</b>', tail_clean)
+                
+                # 불릿 기호 정제 (* 또는 - 는 '• ' 로 변환)
                 if bullet in ['*', '-']:
                     bullet_prefix = '• '
                 elif bullet:
@@ -182,14 +187,16 @@ def format_readable_text(text: str) -> str:
                 
                 head_final = f"{bullet_prefix}{label_clean}"
                 
-                # 마크다운 독립 블록 인식을 위해 빈 줄 구분자(\n) 추가
-                new_lines.append(f'<div class="colon-line"><span class="colon-head">{head_final}</span><span class="colon-tail">{tail_clean}</span></div>\n')
+                # 마크다운 파서 독립 인식을 위해 HTML 위아래에 빈 줄(\n\n) 확보
+                new_lines.append(f'\n<div class="colon-line"><span class="colon-head">{head_final}</span><span class="colon-tail">{tail_clean}</span></div>\n')
                 continue
         
-        # 이전 줄이 colon-line이고 현재 줄이 새로운 항목이 아니라면 이전 tail 내부로 병합
-        if new_lines and 'colon-tail' in new_lines[-1] and not re.match(r'^\s*(?:\d+\.|\-|\*|\•|\#)', line):
+        # 이전 줄이 colon-line이고 현재 줄이 새로운 항목/제목이 아니라면 이전 tail 내부로 병합
+        if new_lines and 'colon-tail' in new_lines[-1] and not re.match(r'^\s*(?:\d+\.|\-|\*|\•|\#)', line) and stripped_line != "---":
             last_line = new_lines.pop().strip()
-            merged_line = re.sub(r'</span>\s*</div>$', f' {stripped_line}</span></div>\n', last_line)
+            # 병합되는 문장의 ** 도 <b> 로 변환
+            merged_text = re.sub(r'\*\*(.*?)\*\*', r'<b>\1</b>', stripped_line)
+            merged_line = re.sub(r'</span>\s*</div>$', f' {merged_text}</span></div>\n', last_line)
             new_lines.append(merged_line)
             continue
 
