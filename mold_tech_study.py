@@ -124,6 +124,8 @@ def render_mini_calendar():
 
 import re
 
+import re
+
 def format_readable_text(text: str) -> str:
     """노트 본문의 LaTeX 수식 및 콜론(:) 기준 수직 들여쓰기 자동 보정"""
     if not text or not str(text).strip():
@@ -131,7 +133,7 @@ def format_readable_text(text: str) -> str:
     
     text_str = str(text)
     
-    # 1. 괄호 수식 구문 (예: (F_{clamp} = P_{cavity} \times A_{projected})) 자동 변환
+    # 1. 괄호 수식 구문 자동 변환
     def replace_bracket_math(match):
         formula = match.group(1).strip()
         formula_clean = re.sub(r'_\{([a-zA-Z0-9_\-]+)\}', r'_{\\text{\1}}', formula)
@@ -151,6 +153,9 @@ def format_readable_text(text: str) -> str:
     lines = text_str.split('\n')
     new_lines = []
     
+    # 소제목 패턴 감지용 정규식 (예: (1), ①, 1., ## 등)
+    subhead_pattern = r'^\s*(?:\(\d+\)|[\u2460-\u2473]|\d+\.|\#)'
+    
     for line in lines:
         stripped_line = line.strip()
         if not stripped_line:
@@ -159,7 +164,7 @@ def format_readable_text(text: str) -> str:
 
         # URL, 기존 HTML, 수식 구문, 마크다운 제목(#), 구분선(---)은 변환에서 제외
         if "http://" in line or "https://" in line or "$$" in line or stripped_line.startswith("<") or stripped_line.startswith("#") or stripped_line == "---":
-            new_lines.append(line)
+            new_lines.append(stripped_line)
             continue
         
         # 불릿 기호(*, -, •, 숫자.), 항목명, 콜론, 본문 내용을 명확히 분리하는 정규식
@@ -187,20 +192,25 @@ def format_readable_text(text: str) -> str:
                 
                 head_final = f"{bullet_prefix}{label_clean}"
                 
-                # 마크다운 파서 독립 인식을 위해 HTML 위아래에 빈 줄(\n\n) 확보
-                new_lines.append(f'\n<div class="colon-line"><span class="colon-head">{head_final}</span><span class="colon-tail">{tail_clean}</span></div>\n')
+                # Streamlit 파서가 완전한 독립 블록으로 파싱할 수 있도록 위아래 빈 줄(\n\n) 보장
+                new_lines.append(f'\n\n<div class="colon-line"><span class="colon-head">{head_final}</span><span class="colon-tail">{tail_clean}</span></div>\n\n')
                 continue
         
-        # 이전 줄이 colon-line이고 현재 줄이 새로운 항목/제목이 아니라면 이전 tail 내부로 병합
-        if new_lines and 'colon-tail' in new_lines[-1] and not re.match(r'^\s*(?:\d+\.|\-|\*|\•|\#)', line) and stripped_line != "---":
+        # [수정된 병합 예외 조건]
+        # 이전 줄이 colon-line이더라도, 현재 줄이 (1), ①, # 등의 소제목이면 절대 병합하지 않음
+        if (new_lines and 'colon-tail' in new_lines[-1] 
+                and not re.match(r'^\s*(?:\d+\.|\-|\*|\•|\#)', line) 
+                and not re.match(subhead_pattern, line)
+                and stripped_line != "---"):
+            
+            # 이전 태그 추출 및 문장 병합
             last_line = new_lines.pop().strip()
-            # 병합되는 문장의 ** 도 <b> 로 변환
             merged_text = re.sub(r'\*\*(.*?)\*\*', r'<b>\1</b>', stripped_line)
-            merged_line = re.sub(r'</span>\s*</div>$', f' {merged_text}</span></div>\n', last_line)
-            new_lines.append(merged_line)
+            merged_line = re.sub(r'</span>\s*</div>$', f' {merged_text}</span></div>', last_line)
+            new_lines.append(f'\n\n{merged_line}\n\n')
             continue
 
-        new_lines.append(line)
+        new_lines.append(stripped_line)
 
     return '\n'.join(new_lines)
 
