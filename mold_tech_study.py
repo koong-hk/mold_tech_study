@@ -1,59 +1,79 @@
-import streamlit as st
-import pandas as pd
+import base64
+import calendar
+from datetime import date, datetime, timedelta, timezone
 import json
 import os
 import re
 import time
-import calendar
-from datetime import datetime, date, timezone, timedelta
-import base64
+import pandas as pd
+import streamlit as st
 
-NOTES_FILE = "notes.json"
-USER_DATA_FILE = "user_study_data.json"
+# -----------------------------------------------------------------------------
+# 1. 파일 경로 절대경로 설정 (최상단 고정으로 데이터 소실 및 경로 이탈 방지)
+# -----------------------------------------------------------------------------
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+NOTES_FILE = os.path.join(BASE_DIR, "notes.json")
+USER_DATA_FILE = os.path.join(BASE_DIR, "user_study_data.json")
 
-# 한국 표준시(KST: UTC+9) 기준 오늘 날짜 구하기 함수
+# -----------------------------------------------------------------------------
+# 2. 데이터 입출력 함수 (노트 및 사용자 학습/D-Day 데이터)
+# -----------------------------------------------------------------------------
 def get_kst_today():
+    """한국 표준시(KST: UTC+9) 기준 오늘 날짜 구하기"""
     kst = timezone(timedelta(hours=9))
     return datetime.now(kst).date()
 
-# 학습노트 로드 함수
 def load_notes():
+    """학습노트 데이터 안전 로드"""
     if os.path.exists(NOTES_FILE):
         try:
             with open(NOTES_FILE, "r", encoding="utf-8") as f:
-                return json.load(f)
-        except Exception:
+                data = json.load(f)
+                return data if isinstance(data, list) else []
+        except Exception as e:
+            st.error(f"노트 파일 로드 오류: {e}")
             return []
     return []
 
-# 학습노트 저장 함수
 def save_notes(notes):
-    with open(NOTES_FILE, "w", encoding="utf-8") as f:
-        json.dump(notes, f, ensure_ascii=False, indent=2)
+    """학습노트 데이터 안전 저장"""
+    try:
+        with open(NOTES_FILE, "w", encoding="utf-8") as f:
+            json.dump(notes, f, ensure_ascii=False, indent=2)
+    except Exception as e:
+        st.error(f"노트 저장 오류: {e}")
 
-# 사용자 데이터 로드 함수
 def load_user_data():
+    """기출문제 학습 데이터 및 D-Day 안전 로드"""
     if os.path.exists(USER_DATA_FILE):
         try:
-            with open(USER_DATA_FILE, 'r', encoding='utf-8') as f:
-                return json.load(f)
-        except Exception:
+            with open(USER_DATA_FILE, "r", encoding="utf-8") as f:
+                data = json.load(f)
+                return data if isinstance(data, dict) else {}
+        except Exception as e:
+            st.error(f"사용자 데이터 로드 오류: {e}")
             return {}
     return {}
 
-# 사용자 데이터 저장 함수
 def save_user_data(data):
-    with open(USER_DATA_FILE, 'w', encoding='utf-8') as f:
-        json.dump(data, f, ensure_ascii=False, indent=4)
+    """기출문제 학습 데이터 및 D-Day 안전 저장"""
+    try:
+        with open(USER_DATA_FILE, "w", encoding="utf-8") as f:
+            json.dump(data, f, ensure_ascii=False, indent=2)
+    except Exception as e:
+        st.error(f"사용자 데이터 저장 오류: {e}")
 
-# 이미지를 base64 텍스트로 인코딩하는 함수
 def convert_image_to_base64(uploaded_file):
+    """이미지를 base64 텍스트로 인코딩"""
     if uploaded_file is not None:
         return base64.b64encode(uploaded_file.getvalue()).decode()
     return None
 
-# 커스텀 미니 달력 HTML 생성 함수 (폭 고정 & 요일 폭 동일 적용)
+# -----------------------------------------------------------------------------
+# 3. UI 및 텍스트/수식 포맷팅 헬퍼 함수
+# -----------------------------------------------------------------------------
 def render_mini_calendar():
+    """커스텀 미니 달력 HTML 생성 함수"""
     today = get_kst_today()
     year, month, today_day = today.year, today.month, today.day
     cal = calendar.monthcalendar(year, month)
@@ -83,41 +103,30 @@ def render_mini_calendar():
             if day == 0:
                 html += "<td style='width: 14.285%; padding: 2px 0;'></td>"
             elif day == today_day:
-                # 오늘 날짜 하이라이트
                 html += f"""<td style='width: 14.285%; padding: 2px 0; text-align: center;'>
                     <span style='background-color: #ff4b4b; color: #ffffff; border-radius: 50%; width: 20px; height: 20px; line-height: 20px; display: inline-block; font-weight: bold; font-size: 0.72rem; margin: 0 auto;'>{day}</span>
                 </td>"""
             else:
-                if idx == 0:     # 일요일: 연한 빨강
-                    color_style = "color: #ff7979;"
-                elif idx == 6:   # 토요일: 연한 파랑
-                    color_style = "color: #64b5f6;"
-                else:            # 평일: 흰색
-                    color_style = "color: #ffffff;"
+                color_style = "color: #ff7979;" if idx == 0 else ("color: #64b5f6;" if idx == 6 else "color: #ffffff;")
                 html += f"<td style='width: 14.285%; padding: 2px 0; {color_style}'>{day}</td>"
         html += "</tr>"
     html += "</tbody></table></div>"
     return html
 
-def format_readable_text(text):
+def format_readable_text(text: str) -> str:
+    """노트 본문의 LaTeX 수식 및 텍스트 가독성 자동 보정"""
     if not text or not str(text).strip():
         return "*작성된 내용이 없습니다.*"
-    return str(text)
-
-def format_readable_text(text: str) -> str:
-    """노트 본문의 LaTeX 수식 및 텍스트 가독성을 자동으로 보정합니다."""
-    if not text:
-        return ""
     
-    # 1. 괄호로 감싸진 수식 구문 (예: (F_{clamp} = P_{cavity} \times A_{projected})) 자동 변환
+    text_str = str(text)
+    
+    # 1. 괄호 수식 구문 (예: (F_{clamp} = P_{cavity} \times A_{projected})) 자동 변환
     def replace_bracket_math(match):
         formula = match.group(1).strip()
-        # 단어형 첨자_{text}를 \text{} 형태로 자동 변환하여 정갈한 수식 폰트 적용
         formula_clean = re.sub(r'_\{([a-zA-Z0-9_\-]+)\}', r'_{\\text{\1}}', formula)
         return f"\n\n$$\n{formula_clean}\n$$\n\n"
 
-    # '='와 LaTeX 연산자가 포함된 괄호 구문 패턴 감지
-    text = re.sub(r'\(([^)]*?=[^)]*?\\[a-zA-Z]+[^)]*?)\)', replace_bracket_math, text)
+    text_str = re.sub(r'\(([^)]*?=[^)]*?\\[a-zA-Z]+[^)]*?)\)', replace_bracket_math, text_str)
     
     # 2. 명시적 블록 수식 $$ ... $$ 내 단어 첨자 보정
     def clean_latex_block(match):
@@ -125,47 +134,17 @@ def format_readable_text(text: str) -> str:
         formula_clean = re.sub(r'_\{([a-zA-Z0-9_\-]+)\}', r'_{\\text{\1}}', formula)
         return f"\n$$\n{formula_clean}\n$$\n"
 
-    text = re.sub(r'\$\$(.*?)\$\$', clean_latex_block, text, flags=re.DOTALL)
+    text_str = re.sub(r'\$\$(.*?)\$\$', clean_latex_block, text_str, flags=re.DOTALL)
 
-    return text
+    return text_str
 
-# 스크립트가 실행되는 디렉터리 기준 절대 경로 설정 (경로 이탈 방지)
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-NOTES_FILE = os.path.join(BASE_DIR, "notes.json")
-USER_DATA_FILE = os.path.join(BASE_DIR, "user_study_data.json")
-
-# 학습노트 안전 로드 함수
-def load_notes():
-    if os.path.exists(NOTES_FILE):
-        try:
-            with open(NOTES_FILE, "r", encoding="utf-8") as f:
-                data = json.load(f)
-                if isinstance(data, list):
-                    return data
-        except Exception as e:
-            st.error(f"노트 파일 로드 중 오류 발생: {e}")
-            return []
-    return []
-
-# 학습노트 안전 저장 함수 (빈 데이터로 인한 덮어쓰기 방어)
-def save_notes(notes):
-    try:
-        with open(NOTES_FILE, "w", encoding="utf-8") as f:
-            json.dump(notes, f, ensure_ascii=False, indent=2)
-    except Exception as e:
-        st.error(f"노트 저장 중 오류 발생: {e}")
 # -----------------------------------------------------------------------------
-# 세션 상태 및 사용자 데이터 초기화
+# 4. 세션 상태 및 사용자 데이터 초기화
 # -----------------------------------------------------------------------------
- # -----------------------------------------------------------------------------
-# 세션 상태 및 사용자 데이터 초기화 (안전 방어 코드 적용)
-# -----------------------------------------------------------------------------
-# 1. user_data 세션 안전 초기화
 if "user_data" not in st.session_state or not isinstance(st.session_state.user_data, dict):
     loaded_data = load_user_data()
     st.session_state["user_data"] = loaded_data if isinstance(loaded_data, dict) else {}
 
-# load_user_data() 결과가 None일 경우 대비 2차 검사
 if not isinstance(st.session_state.get("user_data"), dict):
     st.session_state["user_data"] = {}
 
@@ -175,7 +154,6 @@ if "main_mode" not in st.session_state:
 if "notes" not in st.session_state:
     st.session_state.notes = load_notes()
 
-# 2. [에러 해결] get() 함수를 사용해 안전하게 _d_day_target 참조
 if "d_day_target" not in st.session_state:
     user_data_dict = st.session_state.get("user_data", {})
     st.session_state.d_day_target = user_data_dict.get("_d_day_target", None)
@@ -188,17 +166,6 @@ if "show_detail" not in st.session_state:
 
 if "current_q" not in st.session_state:
     st.session_state.current_q = None
- 
-
-# 저장된 파일에서 d_day_target을 불러와 세션 상태에 저장 (미설정 시 None)
-if "d_day_target" not in st.session_state:
-    st.session_state.d_day_target = st.session_state.user_data.get("_d_day_target", None)
-
-if "show_d_day_picker" not in st.session_state:
-    st.session_state.show_d_day_picker = False
-
-
-
 
 # -----------------------------------------------------------------------------
 # 1. 페이지 설정 및 CSS 적용
