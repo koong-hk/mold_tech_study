@@ -122,12 +122,8 @@ def render_mini_calendar():
     html += "</tbody></table></div>"
     return html
 
-import re
-
-import re
-
 def format_readable_text(text: str) -> str:
-    """노트 본문의 LaTeX 수식 및 콜론(:) 기준 수직 들여쓰기 자동 보정"""
+    """노트 본문의 LaTeX 수식 및 텍스트 가독성 자동 보정"""
     if not text or not str(text).strip():
         return "*작성된 내용이 없습니다.*"
     
@@ -149,29 +145,8 @@ def format_readable_text(text: str) -> str:
 
     text_str = re.sub(r'\$\$(.*?)\$\$', clean_latex_block, text_str, flags=re.DOTALL)
 
-    # 3. [신규] 콜론(:) 기준 수직 들여쓰기 레이아웃 자동 변환
-    lines = text_str.split('\n')
-    new_lines = []
-    for line in lines:
-        # URL, 기존 HTML, 수식 구문은 변환에서 제외
-        if "http://" in line or "https://" in line or "$$" in line or line.strip().startswith("<"):
-            new_lines.append(line)
-            continue
-        
-        # "1. 항목명: 내용" 또는 "항목명: 내용" 패턴 감지
-        match = re.match(r'^(\s*(?:\d+\.|\-|\*|\•)?\s*[^:\n]{1,30}:)\s*(.+)$', line)
-        if match:
-            head = match.group(1)  # 콜론까지의 항목명 (예: "1. 주요 특성:")
-            tail = match.group(2)  # 콜론 뒤의 본문 내용
-            
-            # 시간 표시(예: 12:30)가 아닌 경우에만 Flex 들여쓰기 적용
-            if not re.match(r'^\s*\d{1,2}:\d{2}', line):
-                new_lines.append(f'<div class="colon-line"><span class="colon-head">{head}</span><span class="colon-tail">{tail}</span></div>')
-                continue
-                
-        new_lines.append(line)
+    return text_str
 
-    return '\n'.join(new_lines)
 
 # -----------------------------------------------------------------------------
 # 5. 세션 상태 초기화
@@ -203,7 +178,7 @@ if "current_q" not in st.session_state:
     st.session_state.current_q = None
 
 # -----------------------------------------------------------------------------
-# 6. 정제된 CSS 스타일 적용 (사이드바 정돈 & 우측 탭 들여쓰기/콜론 수직 정렬)
+# 6. 정제된 CSS 스타일 적용 (우측 탭 영역 들여쓰기 및 줄바꿈 라인 정렬 추가)
 # -----------------------------------------------------------------------------
 st.markdown("""
     <style>
@@ -305,34 +280,8 @@ st.markdown("""
         }
 
         /* =================================================================== */
-        /* 6. 우측 탭 영역 콜론(:) 기준 수직 라인 맞춤 들여쓰기 (Flexbox) */
+        /* 6. [수정] 우측 탭 영역 순서 목록(1. 2. 3.) 내어쓰기 및 단락 라인 정렬 */
         /* =================================================================== */
-        .colon-line {
-            display: flex !important;
-            align-items: flex-start !important;
-            margin-left: 1.2rem !important;
-            margin-bottom: 0.5rem !important;
-            line-height: 1.65 !important;
-            width: 100% !important;
-        }
-
-        /* 콜론까지의 제목 부분 (폭 고정) */
-        .colon-head {
-            flex-shrink: 0 !important;
-            white-space: nowrap !important;
-            padding-right: 0.35rem !important;
-            font-weight: 600 !important;
-            color: #ffffff !important;
-        }
-
-        /* 콜론 뒤의 본문 내용 (줄바꿈 시 콜론 오른쪽 시작선에 수직 맞춤) */
-        .colon-tail {
-            flex: 1 1 auto !important;
-            word-break: keep-all !important;
-            overflow-wrap: break-word !important;
-            color: #e2e8f0 !important;
-        }
-
         /* 1) 제목/헤더(h1~h6) 기준선 고정 */
         div[data-testid="stTabPanel"] h1,
         div[data-testid="stTabPanel"] h2,
@@ -355,8 +304,8 @@ st.markdown("""
         /* 3) 순서 있는 목록(<ol>, <li>) 내어쓰기(Hanging Indent) 및 수직 라인 맞춤 */
         div[data-testid="stTabPanel"] ol,
         div[data-testid="stTabPanel"] ul {
-            margin-left: 1.2rem !important;
-            padding-left: 1.2rem !important;
+            margin-left: 1.2rem !important;      /* 전체 목록 들여쓰기 */
+            padding-left: 1.2rem !important;     /* 번호(1. 2.)와 본문 사이 적정 간격 */
             margin-bottom: 0.8rem !important;
         }
 
