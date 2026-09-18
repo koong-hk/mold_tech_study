@@ -401,25 +401,38 @@ with st.sidebar:
     # -------------------------------------------------------------------------
     st.markdown("<div style='margin-top: 25px; border-top: 1px solid #333333; padding-top: 15px;'></div>", unsafe_allow_html=True)
 
-    # 사이드바 전용 CSS 스타일 적용 (D-Day 버튼 간 간격 밀착 및 위치 고정)
+    # 사이드바 전용 CSS 스타일 (하단 정렬 및 높이 100% 일치)
     st.markdown("""
         <style>
-        /* 사이드바 수평 컬럼 간격 최소화 (D-Day 버튼 간 간격 밀착) */
+        /* 사이드바 수평 컬럼 하단(Bottom) 기준 정렬 및 밀착 */
         section[data-testid="stSidebar"] div[data-testid="stHorizontalBlock"] {
             gap: 4px !important;
-            align-items: center !important;
+            align-items: flex-end !important;
         }
 
-        /* 사이드바 모든 버튼 높이/여백 완전 고정 (위치 틀어짐 방지) */
+        /* 컬럼 내부 요소의 하단 정렬 보장 */
+        section[data-testid="stSidebar"] div[data-testid="stColumn"] {
+            display: flex !important;
+            flex-direction: column !important;
+            justify-content: flex-end !important;
+        }
+
+        /* 버튼 래퍼 외곽 여백 제거 */
+        section[data-testid="stSidebar"] div.stButton {
+            margin: 0 !important;
+            padding: 0 !important;
+            width: 100% !important;
+        }
+
+        /* D-Day 설정 버튼 (높이 34px 고정) */
         section[data-testid="stSidebar"] div.stButton > button {
             width: 100% !important;
             font-size: 0.82rem !important;
-            height: 32px !important;
-            min-height: 32px !important;
-            max-height: 32px !important;
+            height: 34px !important;
+            min-height: 34px !important;
+            max-height: 34px !important;
             margin: 0 !important;
             padding: 0 6px !important;
-            line-height: 32px !important;
             box-sizing: border-box !important;
             display: flex !important;
             align-items: center !important;
@@ -427,6 +440,7 @@ with st.sidebar:
             background-color: #000000 !important;
             color: #ffffff !important;
             border: 1px solid #444444 !important;
+            border-radius: 8px !important;
         }
 
         section[data-testid="stSidebar"] div.stButton > button:hover {
@@ -434,14 +448,15 @@ with st.sidebar:
             border-color: #666666 !important;
         }
 
-        /* D-Day 표시 박스 (버튼과 높이/여백 100% 동일) */
+        /* D-Day 표시 박스 (버튼과 높이/테두리/여백 규격 완전 동일) */
         .dday-box {
             background-color: #000000;
             color: #ffffff;
             font-weight: bold;
             font-size: 0.85rem;
-            height: 32px !important;
-            line-height: 30px !important;
+            height: 34px !important;
+            min-height: 34px !important;
+            max-height: 34px !important;
             text-align: center;
             border-radius: 8px;
             border: 1px solid #444444;
@@ -460,7 +475,7 @@ with st.sidebar:
     st.markdown(render_mini_calendar(), unsafe_allow_html=True)
 
     # -------------------------------------------------------------------------
-    # D-Day 표시 및 설정 영역 (위치 고정 및 간격 최소화)
+    # D-Day 표시 계산
     # -------------------------------------------------------------------------
     today_date = get_kst_today()
     if st.session_state.d_day_target:
@@ -475,8 +490,8 @@ with st.sidebar:
     else:
         d_day_str = "D-XX"
 
-    # vertical_alignment="center" 및 비율 [30, 70] 적용으로 밀착 및 위치 고정
-    col_d_btn, col_d_disp = st.columns([30, 70], gap="small", vertical_alignment="center")
+    # [포인트] vertical_alignment="bottom" 으로 아래 라인 기준 수직 정렬
+    col_d_btn, col_d_disp = st.columns([30, 70], gap="small", vertical_alignment="bottom")
 
     with col_d_btn:
         if st.button("D-Day", use_container_width=True, key="btn_set_dday"):
