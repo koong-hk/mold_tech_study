@@ -440,12 +440,23 @@ st.markdown("""
             padding: 0 !important;
         }
 
-        /* [추가] 학습노트 최상단 타이틀 여백 최소화 클래스 */
         .note-top-title {
             margin-top: -10px !important;
-            margin-bottom: 0.2rem !important;
+            margin-bottom: 0.4rem !important;
             font-size: 1.4rem !important;
             font-weight: bold !important;
+        }
+
+        /* [추가] 노트 상세 보기 상단 버튼 위치 보정 */
+        .note-detail-buttons {
+            margin-top: 10px !important;
+            margin-bottom: 8px !important;
+        }
+
+        /* [추가] 백업/복원 Expander 위치 및 여백 보정 */
+        .note-backup-expander {
+            margin-top: 8px !important;
+            margin-bottom: 12px !important;
         }
     </style>
 """, unsafe_allow_html=True)
@@ -942,7 +953,11 @@ if st.session_state.main_mode == "exam":
 
 elif st.session_state.main_mode == "note":
 
-    # 백업 및 데이터 관리 (Expander)
+    # 1. 메인 타이틀을 상단에 먼저 출력
+    st.markdown("<div class='note-top-title'>📖 학습노트 관리</div>", unsafe_allow_html=True)
+
+    # 2. 백업 및 데이터 관리 (Expander) 위치를 타이틀 아래로 이동 및 여백 조율
+    st.markdown("<div class='note-backup-expander'>", unsafe_allow_html=True)
     with st.expander("💾 노트 데이터 백업 / 복원 (JSON 파일)"):
         col_export, col_import = st.columns(2)
         
@@ -971,17 +986,20 @@ elif st.session_state.main_mode == "note":
                             st.error("올바른 노트 백업 파일 형식이 아닙니다.")
                     except Exception as e:
                         st.error(f"복원 실패: {e}")
+    st.markdown("</div>", unsafe_allow_html=True)
 
     if "selected_note_id" not in st.session_state:
         st.session_state.selected_note_id = None
     if "note_sub_mode" not in st.session_state:
         st.session_state.note_sub_mode = "list"
 
-    # [수정 적용] 학습노트 상세 화면
+    # 학습노트 상세 화면
     if st.session_state.note_sub_mode == "detail" and st.session_state.selected_note_id:
         note = next((n for n in st.session_state.notes if n["id"] == st.session_state.selected_note_id), None)
         
         if note:
+            # 3. [리스트로 돌아가기 / 목록] 버튼 위치를 살짝 아래로 내리기 위한 컨테이너 적용
+            st.markdown("<div class='note-detail-buttons'>", unsafe_allow_html=True)
             col_btn1, col_btn2, _ = st.columns([1.5, 1.5, 7])
             with col_btn1:
                 if st.button("📋 노트목록", use_container_width=True):
@@ -992,10 +1010,11 @@ elif st.session_state.main_mode == "note":
                 if st.button("✏️ 편집", type="primary", use_container_width=True):
                     st.session_state.note_sub_mode = "edit"
                     st.rerun()
+            st.markdown("</div>", unsafe_allow_html=True)
 
             st.markdown("---")
 
-            # 기출문제와 완전히 동일한 컨테이너 및 들여쓰기 서식 적용
+            # 기출문제와 동일한 들여쓰기 서식 적용
             with st.container(border=True):
                 if note.get("content"):
                     render_formatted_content(note["content"])
@@ -1091,7 +1110,7 @@ elif st.session_state.main_mode == "note":
                                 pass
                             is_delete = st.checkbox("삭제", key=f"chk_del_edit_{note['id']}_{img_idx}")
                             if not is_delete:
-                                keep_imgs.append(b64_str)
+                                keep_imgs.append(b64_img)
 
                 col_save, col_del = st.columns([1, 1])
                 with col_save:
@@ -1147,9 +1166,6 @@ elif st.session_state.main_mode == "note":
             }
             </style>
         """, unsafe_allow_html=True)
-
-        # [수정] 중복 제목("📌 노트") 삭제 및 "📖 학습노트 관리"를 최상단 메인 제목으로 구성
-        st.markdown("<div class='note-top-title'>📖 학습노트 관리</div>", unsafe_allow_html=True)
 
         col_search, col_btn1, col_btn2 = st.columns([3, 1.2, 1.2])
         with col_search:
@@ -1215,7 +1231,6 @@ elif st.session_state.main_mode == "note":
                 if kw in n.get("title", "").lower() or kw in n.get("content", "").lower() or kw in n.get("category", "").lower()
             ]
 
-        # 세로 여백 최소화
         st.markdown("<div style='margin-top: 6px;'></div>", unsafe_allow_html=True)
         h_col1, h_col2, h_col3 = st.columns([3, 7, 2.5])
         with h_col1:
