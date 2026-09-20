@@ -440,16 +440,11 @@ st.markdown("""
             padding: 0 !important;
         }
 
-        /* 첫 페이지 상단 헤더 기준 맞춤 공통 클래스 */
-        .aligned-top-header {
+        /* 첫 페이지 상단 헤더 위치와 완벽히 정렬하는 상단 컨트롤 영역 */
+        .header-aligned-buttons {
             margin-top: 0px !important;
-            margin-bottom: 0.8rem !important;
-        }
-
-        .aligned-top-header h1 {
-            font-size: 1.4rem !important;
-            margin: 0 !important;
-            padding: 0 !important;
+            margin-bottom: 0.6rem !important;
+            padding-top: 0px !important;
         }
     </style>
 """, unsafe_allow_html=True)
@@ -640,7 +635,6 @@ if st.session_state.main_mode == "exam":
             st.warning("조건에 해당하는 문제가 없습니다. 좌측 사이드바 필터를 변경해 보세요.")
     
     else:
-        # [수정] 기출문제 상세 보기 화면: "리스트로 돌아가기" 버튼 위치를 첫 페이지 헤더 기준에 맞춤
         q_text = st.session_state.current_q
         q_data = st.session_state.user_data[q_text]
         
@@ -958,7 +952,8 @@ elif st.session_state.main_mode == "note":
         note = next((n for n in st.session_state.notes if n["id"] == st.session_state.selected_note_id), None)
         
         if note:
-            # [수정] "노트목록" 버튼 위치를 첫 페이지 "금형기술사 기출문제 리스트" 타이틀 위치에 정렬
+            # [수정] "노트목록" & "편집" 버튼 위치를 첫 페이지 "금형기술사 기출문제 리스트" 타이틀 위치에 정밀 정렬
+            st.markdown("<div class='header-aligned-buttons'></div>", unsafe_allow_html=True)
             col_btn1, col_btn2, _ = st.columns([1.5, 1.5, 7])
             with col_btn1:
                 if st.button("📋 노트목록", use_container_width=True):
@@ -970,7 +965,8 @@ elif st.session_state.main_mode == "note":
                     st.session_state.note_sub_mode = "edit"
                     st.rerun()
 
-            st.markdown("---")
+            # [수정] 버튼 하단 간격 축소 (st.markdown("---") 제거 및 좁은 여백 적용)
+            st.markdown("<div style='margin-bottom: 10px;'></div>", unsafe_allow_html=True)
 
             # 노트 내용 렌더링
             with st.container(border=True):
@@ -984,7 +980,7 @@ elif st.session_state.main_mode == "note":
                 imgs = [note["image_base64"]]
 
             if imgs:
-                st.markdown("---")
+                st.markdown("<div style='margin-top: 15px; border-top: 1px solid #333; padding-top: 10px;'></div>", unsafe_allow_html=True)
                 st.markdown("**🖼️ 첨부 이미지**")
                 img_cols = st.columns(min(len(imgs), 3))
                 for idx, b64_img in enumerate(imgs):
@@ -1000,7 +996,7 @@ elif st.session_state.main_mode == "note":
                 links = [note["link"]]
 
             if links:
-                st.markdown("---")
+                st.markdown("<div style='margin-top: 15px; border-top: 1px solid #333; padding-top: 10px;'></div>", unsafe_allow_html=True)
                 st.markdown("**🔗 관련 링크**")
                 for link in links:
                     st.markdown(f"- [{link}]({link})")
@@ -1017,12 +1013,14 @@ elif st.session_state.main_mode == "note":
         note = next((n for n in st.session_state.notes if n["id"] == st.session_state.selected_note_id), None)
         
         if note:
+            st.markdown("<div class='header-aligned-buttons'></div>", unsafe_allow_html=True)
             col_b1, _ = st.columns([1.5, 8.5])
             with col_b1:
                 if st.button("⬅️ 취소", use_container_width=True):
                     st.session_state.note_sub_mode = "detail"
                     st.rerun()
 
+            st.markdown("<div style='margin-bottom: 8px;'></div>", unsafe_allow_html=True)
             st.subheader("✏️ 노트 편집")
             
             existing_links = note.get("links", [])
@@ -1104,13 +1102,11 @@ elif st.session_state.main_mode == "note":
                     st.session_state.selected_note_id = None
                     st.rerun()
 
-    # [3] 학습노트 메인 리스트 화면 (데이터프레임 형태 적용)
+    # [3] 학습노트 메인 리스트 화면 (데이터프레임 형태)
     else:
-        # [수정] "학습노트 관리" 타이틀 위치를 첫 페이지 "금형기술사 기출문제 리스트"와 정확히 동일하게 배치
         st.markdown("<h1>📖 학습노트 관리</h1>", unsafe_allow_html=True)
         st.write("나만의 금형기술사 서브노트 및 개념 정리 노트 목록입니다. 목록에서 노트를 선택하여 상세 내용을 확인하세요.")
 
-        # 컨트롤 버튼 영역 (검색, 새 노트, 백업/복원, 전체저장)
         c_search, c_new, c_backup, c_save = st.columns([2.8, 1.2, 1.4, 1.1])
         with c_search:
             note_search_kw = st.text_input("🔍 노트 검색", placeholder="검색어 입력...", label_visibility="collapsed")
@@ -1197,7 +1193,6 @@ elif st.session_state.main_mode == "note":
                             st.success("새 학습노트가 추가되었습니다!")
                             st.rerun()
 
-        # 노트 필터링 데이터
         filtered_notes = st.session_state.notes
         if note_search_kw.strip():
             kw = note_search_kw.strip().lower()
@@ -1209,7 +1204,6 @@ elif st.session_state.main_mode == "note":
         if not filtered_notes:
             st.info("등록된 학습노트가 없거나 검색 결과가 없습니다.")
         else:
-            # [수정] 학습노트 목록을 첫 페이지(기출문제)와 동일한 DataFrame 형태로 구축
             table_data = []
             for n in filtered_notes:
                 has_img = "🖼️" if (n.get("images") or n.get("image_base64")) else ""
@@ -1226,7 +1220,6 @@ elif st.session_state.main_mode == "note":
             
             notes_df = pd.DataFrame(table_data)
 
-            # 데이터프레임 출력 및 선택 이벤트 바인딩
             event_note = st.dataframe(
                 notes_df[['분류', '노트 제목', '첨부', '수정일']],
                 use_container_width=True,
@@ -1241,7 +1234,6 @@ elif st.session_state.main_mode == "note":
                 }
             )
 
-            # 기출문제 리스트와 동일한 선택 및 상세 보기 이동 컨트롤
             title_options = list(notes_df['노트 제목'])
             selected_rows = event_note.selection.get("rows", [])
             
