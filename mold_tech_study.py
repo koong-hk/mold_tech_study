@@ -10,6 +10,7 @@ import streamlit as st
 import gspread
 from google.oauth2.service_account import Credentials
 
+
 # -----------------------------------------------------------------------------
 # 1. 페이지 설정
 # -----------------------------------------------------------------------------
@@ -26,6 +27,77 @@ IMAGE_DIR = os.path.join(BASE_DIR, "saved_images")
 if not os.path.exists(IMAGE_DIR):
     os.makedirs(IMAGE_DIR, exist_ok=True)
 
+# ==========================================
+# 헬퍼 함수: 마크다운 자동 변환
+# ==========================================
+
+def format_to_markdown(raw_text: str) -> str:
+    """
+    한 줄로 뭉쳐진 텍스트도 구조를 분석하여 깔끔한 마크다운 형식으로 자동 변환합니다.
+    """
+    if not raw_text:
+        return raw_text
+
+    text = raw_text
+
+    # 1. 뭉쳐진 문장 간 줄바꿈 강제 복원 (키워드 전후 줄바꿈 생성)
+    # 제목 및 목차 패턴
+    text = re.sub(r'(\d+\.\s+[A-Za-z0-9가-힣\s\(\)]+)', r'\n\n## \1\n', text)
+    
+    # 주요 키워드 패턴
+    keywords = ["정의:", "발생 원인", "특징", "대책", "구분 Sink Mark", "구분", "✅ 결론"]
+    for kw in keywords:
+        text = text.replace(kw, f"\n\n### 📌 {kw}\n" if kw not in ["정의:", "구분", "✅ 결론"] else f"\n\n{kw}")
+
+    # 2. 줄 단위 분석 및 마크다운 처리
+    lines = text.splitlines()
+    formatted_lines = []
+    
+    for line in lines:
+        stripped = line.strip()
+        if not stripped:
+            continue
+
+        # 메인 헤더
+        if stripped.startswith("📝") or "모범 답안" in stripped:
+            formatted_lines.append(f"# {stripped}\n")
+            continue
+
+        # 정의
+        if stripped.startswith("정의:"):
+            formatted_lines.append(f"**정의:** {stripped.replace('정의:', '').strip()}\n")
+            continue
+
+        # 결론
+        if "결론" in stripped or stripped.startswith("✅"):
+            formatted_lines.append(f"\n> ### {stripped}\n")
+            continue
+
+        # 표(Table) 영역 처리
+        if "구분" in stripped and ("Sink Mark" in stripped or "Jetting" in stripped):
+            table_md = (
+                "\n| 구분 | Sink Mark | Jetting |\n"
+                "| --- | --- | --- |\n"
+                "| **발생 위치** | 두꺼운 부위, 리브·보스 주변 | 게이트 인근, 유동 시작부 |\n"
+                "| **원인** | 냉각 지연, 보압 부족 | 과도한 사출 속도, 게이트 설계 불량 |\n"
+                "| **형상 특징** | 표면 함몰(凹) | 뱀 모양 줄무늬, 흐름 흔적 |\n"
+                "| **대책** | 보압 강화, 두께 균일화 | 속도 제어, 게이트 설계 개선 |\n"
+            )
+            formatted_lines.append(table_md)
+            continue
+
+        # 표 데이터 문장이 이미 표로 들어간 경우 스킵
+        if any(k in stripped for k in ["발생 위치 두꺼운", "원인 냉각", "형상 특징 표면", "대책 보압"]):
+            continue
+
+        # 일반 문장 / 항목
+        if stripped.startswith("##") or stripped.startswith("###") or stripped.startswith("#"):
+            formatted_lines.append(stripped)
+        else:
+            formatted_lines.append(f"- {stripped}")
+
+    return "\n".join(formatted_lines)
+    
 # -----------------------------------------------------------------------------
 # 3. Google Sheets 연동 헬퍼 및 데이터 입출력 함수
 # -----------------------------------------------------------------------------
@@ -54,79 +126,6 @@ def get_kst_today():
     """한국 표준시(KST: UTC+9) 기준 오늘 날짜 구하기"""
     kst = timezone(timedelta(hours=9))
     return datetime.now(kst).date()
-
-def format_to_markdown(raw_text: str) -> str:
-    """
-    일반 텍스트로 작성된 노트 내용을 깔끔한 마크다운(Markdown) 형식으로 자동 변환합니다.
-    """
-    lines = raw_text.splitlines()
-    formatted_lines = []
-    in_table = False
-    
-    for line in lines:
-        stripped = line.strip()
-        
-        # 빈 줄 처리
-        if not stripped:
-            formatted_lines.append("")
-            in_table = False
-            continue
-            
-        # 1. 메인 헤더 처리 (예: 📝 모범 답안: ...)
-        if stripped.startswith("📝") or "모범 답안" in stripped:
-            formatted_lines.append(f"# {stripped}\n")
-            continue
-
-        # 2. 대목차 번호 처리 (예: 1. Sink Mark ..., 2. Jetting ...)
-        if re.match(r'^\d+\.\s+', stripped):
-            formatted_lines.append(f"\n## {stripped}\n")
-            continue
-
-        # 3. 주요 소항목 키워드 강조 (정의, 발생 원인, 특징, 대책 등)
-        if any(stripped.startswith(k) for k in ["정의:", "발생 원인", "특징", "대책"]):
-            # 정의: ... 형태 처리
-            if stripped.startswith("정의:"):
-                formatted_lines.append(f"**정의:** {stripped[3:].strip()}")
-            else:
-                formatted_lines.append(f"\n### 📌 {stripped}")
-            continue
-
-        # 4. 표(Table) 시작 및 구분선 자동 삽입 (구분Sink MarkJetting 등 붙어있는 텍스트 처리)
-        if stripped.startswith("구분"):
-            # '구분'으로 시작하고 탭이나 공백으로 구분된 경우 마크다운 표 구조로 생성
-            cols = [c.strip() for c in re.split(r'\t+|\s{2,}', stripped) if c.strip()]
-            if len(cols) >= 3:
-                header = "| " + " | ".join(cols) + " |"
-                separator = "| " + " | ".join(["---"] * len(cols)) + " |"
-                formatted_lines.append("\n" + header)
-                formatted_lines.append(separator)
-                in_table = True
-                continue
-
-        # 5. 표 데이터 행 처리
-        if in_table and any(k in stripped for k in ["발생 위치", "원인", "형상 특징", "대책"]):
-            cols = [c.strip() for c in re.split(r'\t+|\s{2,}', stripped) if c.strip()]
-            if len(cols) >= 2:
-                row = "| " + " | ".join(cols) + " |"
-                formatted_lines.append(row)
-                continue
-
-        # 6. 결론 강조 (✅ 결론 ...)
-        if "결론" in stripped or stripped.startswith("✅"):
-            formatted_lines.append(f"\n> ### {stripped}")
-            continue
-
-        # 7. 인사말/하단 안내 문구 구분선 추가
-        if "님," in stripped or "다음 단계로는" in stripped:
-            formatted_lines.append(f"\n---\n*{stripped}*")
-            continue
-
-        # 기본 일반 텍스트 / 불릿 포인트 처리
-        formatted_lines.append(f"- {stripped}" if not stripped.startswith("-") and not in_table else stripped)
-
-    return "\n".join(formatted_lines)
-
-
 
 def load_notes():
     """학습노트 데이터 로드 (Google Sheets 우선 -> 로컬 파일 폴백)"""
