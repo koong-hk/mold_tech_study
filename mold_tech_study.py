@@ -31,7 +31,7 @@ if not os.path.exists(IMAGE_DIR):
 # -----------------------------------------------------------------------------
 @st.cache_resource
 def get_gspread_client():
-    """Streamlit Secrets 인증으로 gspread 클라이언트 생성 (private_key \\n 자동 보정)"""
+    """Streamlit Secrets 인증으로 gspread 클라이언트 생성 (private_key \n 자동 보정)"""
     try:
         scope = [
             "https://www.googleapis.com/auth/spreadsheets",
@@ -371,9 +371,7 @@ st.markdown("""
             line-height: 1.1 !important;
         }
 
-        /* =================================================================== */
-        /* [핵심] 기출문제 및 학습노트 공통 들여쓰기/목록 스타일 (.custom-markdown-box) */
-        /* =================================================================== */
+        /* 기출문제 및 학습노트 공통 들여쓰기/목록 스타일 (.custom-markdown-box) */
         .custom-markdown-box {
             width: 100% !important;
         }
@@ -440,6 +438,14 @@ st.markdown("""
             box-sizing: border-box !important;
             margin: 0 !important;
             padding: 0 !important;
+        }
+
+        /* [추가] 학습노트 최상단 타이틀 여백 최소화 클래스 */
+        .note-top-title {
+            margin-top: -10px !important;
+            margin-bottom: 0.2rem !important;
+            font-size: 1.4rem !important;
+            font-weight: bold !important;
         }
     </style>
 """, unsafe_allow_html=True)
@@ -936,8 +942,7 @@ if st.session_state.main_mode == "exam":
 
 elif st.session_state.main_mode == "note":
 
-    st.markdown("### 📖 서술형 학습노트 관리")
-    
+    # 백업 및 데이터 관리 (Expander)
     with st.expander("💾 노트 데이터 백업 / 복원 (JSON 파일)"):
         col_export, col_import = st.columns(2)
         
@@ -967,30 +972,12 @@ elif st.session_state.main_mode == "note":
                     except Exception as e:
                         st.error(f"복원 실패: {e}")
 
-    st.markdown("""
-        <style>
-        .note-header-container {
-            margin-top: 15px;
-            margin-bottom: 3px;
-        }
-        
-        .custom-title {
-            margin-top: 3px !important;
-            margin-bottom: 3px !important;
-            font-size: 1.4rem;
-            font-weight: bold;
-        }
-        </style>
-    """, unsafe_allow_html=True)
-
-    st.markdown('<div class="custom-title">📌 노트 </div>', unsafe_allow_html=True)
-
     if "selected_note_id" not in st.session_state:
         st.session_state.selected_note_id = None
     if "note_sub_mode" not in st.session_state:
         st.session_state.note_sub_mode = "list"
 
-    # [수정 적용] 학습노트 상세 화면 들여쓰기 보정
+    # [수정 적용] 학습노트 상세 화면
     if st.session_state.note_sub_mode == "detail" and st.session_state.selected_note_id:
         note = next((n for n in st.session_state.notes if n["id"] == st.session_state.selected_note_id), None)
         
@@ -1104,7 +1091,7 @@ elif st.session_state.main_mode == "note":
                                 pass
                             is_delete = st.checkbox("삭제", key=f"chk_del_edit_{note['id']}_{img_idx}")
                             if not is_delete:
-                                keep_imgs.append(b64_img)
+                                keep_imgs.append(b64_str)
 
                 col_save, col_del = st.columns([1, 1])
                 with col_save:
@@ -1161,8 +1148,8 @@ elif st.session_state.main_mode == "note":
             </style>
         """, unsafe_allow_html=True)
 
-        st.markdown("<h1 style='margin-bottom: 0.5rem;'>📖 학습노트 관리</h1>", unsafe_allow_html=True)
-        st.write("나만의 금형기술사 서브노트 및 개념 정리 노트 목록입니다.")
+        # [수정] 중복 제목("📌 노트") 삭제 및 "📖 학습노트 관리"를 최상단 메인 제목으로 구성
+        st.markdown("<div class='note-top-title'>📖 학습노트 관리</div>", unsafe_allow_html=True)
 
         col_search, col_btn1, col_btn2 = st.columns([3, 1.2, 1.2])
         with col_search:
@@ -1228,7 +1215,8 @@ elif st.session_state.main_mode == "note":
                 if kw in n.get("title", "").lower() or kw in n.get("content", "").lower() or kw in n.get("category", "").lower()
             ]
 
-        st.markdown("<div style='margin-top: 15px;'></div>", unsafe_allow_html=True)
+        # 세로 여백 최소화
+        st.markdown("<div style='margin-top: 6px;'></div>", unsafe_allow_html=True)
         h_col1, h_col2, h_col3 = st.columns([3, 7, 2.5])
         with h_col1:
             st.markdown("<div style='font-weight: bold; color: #444; font-size: 0.85rem; padding-left: 4px;'>📂 분류</div>", unsafe_allow_html=True)
@@ -1237,7 +1225,7 @@ elif st.session_state.main_mode == "note":
         with h_col3:
             st.markdown("<div style='font-weight: bold; color: #444; font-size: 0.85rem; text-align: right; padding-right: 4px;'>🕒 수정일</div>", unsafe_allow_html=True)
         
-        st.markdown("<hr style='margin: 4px 0 6px 0; border: none; border-top: 2px solid #333;'/>", unsafe_allow_html=True)
+        st.markdown("<hr style='margin: 3px 0 5px 0; border: none; border-top: 2px solid #333;'/>", unsafe_allow_html=True)
 
         if not filtered_notes:
             st.info("등록된 학습노트가 없거나 검색 결과가 없습니다.")
