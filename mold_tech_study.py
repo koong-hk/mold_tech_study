@@ -1,5 +1,4 @@
-# 수정코드_260918
-# mold_tech_study_app.py
+0918
 
 import base64
 import calendar
