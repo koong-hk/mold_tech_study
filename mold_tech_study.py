@@ -107,16 +107,27 @@ def save_notes(notes):
     return sheet_saved
 
 def load_user_data():
-    """기출문제 학습 데이터 및 D-Day 로드 (Google Sheets 우선 -> 로컬 파일 폴백)"""
+    """기출문제 학습 데이터 로드 (행 단위 로드)"""
     try:
         gc = get_gspread_client()
         if gc and "sheets" in st.secrets:
             sheet_name = st.secrets["sheets"]["study_data_sheet"]
             sh = gc.open(sheet_name).sheet1
-            cell_value = sh.acell("A1").value
-            if cell_value:
-                data = json.loads(cell_value)
-                return data if isinstance(data, dict) else {}
+            
+            # 전체 행 데이터(A열: 문제명, B열: JSON 데이터) 가져오기
+            rows = sh.get_all_values()
+            data = {}
+            for row in rows:
+                if len(row) >= 2 and row[0] and row[1]:
+                    try:
+                        # 특별 키 (예: _d_day_target) 처리
+                        if row[0] == "_d_day_target":
+                            data["_d_day_target"] = row[1]
+                        else:
+                            data[row[0]] = json.loads(row[1])
+                    except Exception:
+                        pass
+            return data
     except Exception as e:
         st.warning(f"구글 시트 기출데이터 로드 실패, 로컬 파일로 시도합니다: {e}")
 
@@ -131,29 +142,38 @@ def load_user_data():
     return {}
 
 def save_user_data(data):
-    """기출문제 학습 데이터 및 D-Day 저장 (Google Sheets + 로컬 파일 백업)"""
-    json_str = json.dumps(data, ensure_ascii=False)
-    
-    # 1. Google Sheets 저장
-    sheet_saved = False
-    try:
-        gc = get_gspread_client()
-        if gc and "sheets" in st.secrets:
-            sheet_name = st.secrets["sheets"]["study_data_sheet"]
-            sh = gc.open(sheet_name).sheet1
-            sh.update_acell("A1", json_str)
-            sheet_saved = True
-    except Exception as e:
-        st.error(f"구글 시트 기출데이터 저장 오류: {e}")
-
-    # 2. 로컬 백업 저장
+    """기출문제 학습 데이터 저장 (행 단위 분할 저장)"""
+    # 1. 로컬 파일 백업 저장
     try:
         with open(USER_DATA_FILE, "w", encoding="utf-8") as f:
             f.write(json.dumps(data, ensure_ascii=False, indent=2))
     except Exception:
         pass
 
-    return sheet_saved
+    # 2. Google Sheets 저장 (행 단위 배치 업데이트)
+    try:
+        gc = get_gspread_client()
+        if gc and "sheets" in st.secrets:
+            sheet_name = st.secrets["sheets"]["study_data_sheet"]
+            sh = gc.open(sheet_name).sheet1
+            
+            rows_to_update = []
+            for q_key, q_val in data.items():
+                if q_key == "_d_day_target":
+                    rows_to_update.append([q_key, str(q_val)])
+                else:
+                    # 문제 데이터를 JSON 텍스트로 전환하여 B열에 저장
+                    json_val = json.dumps(q_val, ensure_ascii=False)
+                    rows_to_update.append([q_key, json_val])
+            
+            # 기존 시트 초기화 후 행 단위로 일괄 입력
+            sh.clear()
+            if rows_to_update:
+                sh.update(f"A1:B{len(rows_to_update)}", rows_to_update)
+            return True
+    except Exception as e:
+        st.error(f"구글 시트 기출데이터 저장 오류: {e}")
+        return False
 
 def convert_image_to_base64(uploaded_file):
     """이미지를 base64 텍스트로 인코딩"""
