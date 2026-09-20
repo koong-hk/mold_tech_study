@@ -1024,7 +1024,6 @@ elif st.session_state.main_mode == "note":
         note = next((n for n in st.session_state.notes if n["id"] == st.session_state.selected_note_id), None)
         
         if note:
-            # [수정] "노트목록" & "편집" 버튼 위치를 첫 페이지 "금형기술사 기출문제 리스트" 타이틀 위치에 정밀 정렬
             st.markdown("<div class='header-aligned-buttons'></div>", unsafe_allow_html=True)
             col_btn1, col_btn2, _ = st.columns([1.5, 1.5, 7])
             with col_btn1:
@@ -1037,7 +1036,6 @@ elif st.session_state.main_mode == "note":
                     st.session_state.note_sub_mode = "edit"
                     st.rerun()
 
-            # [수정] 버튼 하단 간격 축소 (st.markdown("---") 제거 및 좁은 여백 적용)
             st.markdown("<div style='margin-bottom: 10px;'></div>", unsafe_allow_html=True)
 
             # 노트 내용 렌더링
@@ -1156,7 +1154,8 @@ elif st.session_state.main_mode == "note":
 
                     note["category"] = edit_cat
                     note["title"] = edit_title
-                    note["content"] = edit_content
+                    # [수정] 편집된 내용도 마크다운 자동 변환 후 저장
+                    note["content"] = format_to_markdown(edit_content)
                     note["links"] = [line.strip() for line in edit_links_raw.split('\n') if line.strip()]
                     note["images"] = keep_imgs
                     note["updated_at"] = datetime.now().strftime("%Y-%m-%d %H:%M")
@@ -1259,7 +1258,7 @@ elif st.session_state.main_mode == "note":
                                 "id": new_id,
                                 "category": new_cat,
                                 "title": new_title.strip(),
-                                "content": new_content,
+                                "content": formatted_content,  # [수정] 변환된 formatted_content 저장!
                                 "links": links_list,
                                 "images": imgs_list,
                                 "updated_at": datetime.now().strftime("%Y-%m-%d %H:%M")
@@ -1268,7 +1267,6 @@ elif st.session_state.main_mode == "note":
                             save_notes(st.session_state.notes)
                             st.toast("새 학습노트가 추가되었습니다!", icon="✅")
                     
-                            # 등록 후 곧바로 작성한 노트의 상세 보기 화면으로 전환
                             st.session_state.selected_note_id = new_id
                             st.session_state.note_sub_mode = "detail"
                             st.rerun()
