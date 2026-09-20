@@ -1,5 +1,3 @@
-# 0918
-
 import base64
 import calendar
 from datetime import date, datetime, timedelta, timezone
