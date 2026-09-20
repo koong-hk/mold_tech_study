@@ -1178,9 +1178,10 @@ elif st.session_state.main_mode == "note":
                                     b64_str = convert_image_to_base64(img_f)
                                     if b64_str:
                                         imgs_list.append(b64_str)
-
+                    
+                            new_id = int(time.time())
                             new_entry = {
-                                "id": int(time.time()),
+                                "id": new_id,
                                 "category": new_cat,
                                 "title": new_title.strip(),
                                 "content": new_content,
@@ -1190,7 +1191,11 @@ elif st.session_state.main_mode == "note":
                             }
                             st.session_state.notes.insert(0, new_entry)
                             save_notes(st.session_state.notes)
-                            st.success("새 학습노트가 추가되었습니다!")
+                            st.toast("새 학습노트가 추가되었습니다!", icon="✅")
+                    
+                            # 등록 후 곧바로 작성한 노트의 상세 보기 화면으로 전환
+                            st.session_state.selected_note_id = new_id
+                            st.session_state.note_sub_mode = "detail"
                             st.rerun()
 
         filtered_notes = st.session_state.notes
