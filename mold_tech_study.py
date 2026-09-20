@@ -31,7 +31,7 @@ if not os.path.exists(IMAGE_DIR):
 # -----------------------------------------------------------------------------
 @st.cache_resource
 def get_gspread_client():
-    """Streamlit Secrets 인증으로 gspread 클라이언트 생성 (private_key \\n 자동 보정 포함)"""
+    """Streamlit Secrets 인증으로 gspread 클라이언트 생성 (private_key \\n 자동 보정)"""
     try:
         scope = [
             "https://www.googleapis.com/auth/spreadsheets",
@@ -101,7 +101,7 @@ def save_notes(notes):
     return sheet_saved
 
 def load_user_data():
-    """기출문제 학습 데이터 로드 (A열: 문제명, B열: JSON 파티셔닝 구조로 행 단위 분할 로드)"""
+    """기출문제 학습 데이터 로드 (A열: 문제명, B열: JSON 분할 로드)"""
     try:
         gc = get_gspread_client()
         if gc and "sheets" in st.secrets:
@@ -132,7 +132,7 @@ def load_user_data():
     return {}
 
 def save_user_data(data):
-    """기출문제 학습 데이터 저장 (A열: 문제명, B열: JSON 파티셔닝 구조로 행 단위 분할 저장)"""
+    """기출문제 학습 데이터 저장 (A열: 문제명, B열: JSON 분할 저장)"""
     try:
         with open(USER_DATA_FILE, "w", encoding="utf-8") as f:
             f.write(json.dumps(data, ensure_ascii=False, indent=2))
@@ -234,6 +234,17 @@ def format_readable_text(text: str) -> str:
 
     return text_str
 
+def render_formatted_content(text: str):
+    """기출문제 및 학습노트에 동일한 들여쓰기 서식을 강제 적용하는 전용 렌더링 함수"""
+    st.markdown(
+        f"""
+        <div class="custom-markdown-box">
+            {format_readable_text(text)}
+        </div>
+        """,
+        unsafe_allow_html=True
+    )
+
 # -----------------------------------------------------------------------------
 # 5. 세션 상태 초기화
 # -----------------------------------------------------------------------------
@@ -264,7 +275,7 @@ if "current_q" not in st.session_state:
     st.session_state.current_q = None
 
 # -----------------------------------------------------------------------------
-# 6. 정제된 CSS 스타일 적용 (기출문제 + 학습노트 동일 들여쓰기 통합 적용)
+# 6. 정제된 CSS 스타일 적용 (기출문제 & 학습노트 통합 들여쓰기 보정)
 # -----------------------------------------------------------------------------
 st.markdown("""
     <style>
@@ -361,51 +372,42 @@ st.markdown("""
         }
 
         /* =================================================================== */
-        /* [수정] 우측 영역 (기출문제 탭 & 학습노트 영역 전체 들여쓰기 공통 적용) */
+        /* [핵심] 기출문제 및 학습노트 공통 들여쓰기/목록 스타일 (.custom-markdown-box) */
         /* =================================================================== */
-        div[data-testid="stTabPanel"] h1, div[data-testid="stTabPanel"] h2,
-        div[data-testid="stTabPanel"] h3, div[data-testid="stTabPanel"] h4,
-        div[data-testid="stTabPanel"] h5, div[data-testid="stTabPanel"] h6,
-        .note-detail-area h1, .note-detail-area h2, .note-detail-area h3,
-        .note-detail-area h4, .note-detail-area h5, .note-detail-area h6 {
+        .custom-markdown-box {
+            width: 100% !important;
+        }
+
+        .custom-markdown-box h1, .custom-markdown-box h2,
+        .custom-markdown-box h3, .custom-markdown-box h4,
+        .custom-markdown-box h5, .custom-markdown-box h6 {
             margin-left: 0px !important;
             margin-bottom: 0.5rem !important;
         }
 
-        div[data-testid="stTabPanel"] div[data-testid="stMarkdownContainer"] > p,
-        .note-detail-area div[data-testid="stMarkdownContainer"] > p {
+        .custom-markdown-box p {
             margin-left: 1.2rem !important;
             word-break: keep-all !important;
             overflow-wrap: break-word !important;
             line-height: 1.65 !important;
         }
 
-        div[data-testid="stTabPanel"] ol, div[data-testid="stTabPanel"] ul,
-        .note-detail-area ol, .note-detail-area ul {
+        .custom-markdown-box ol, .custom-markdown-box ul {
             margin-left: 1.2rem !important;
             padding-left: 1.2rem !important;
             margin-bottom: 0.8rem !important;
         }
 
-        div[data-testid="stTabPanel"] li,
-        .note-detail-area li {
+        .custom-markdown-box li {
             margin-bottom: 0.4rem !important;
             line-height: 1.65 !important;
             word-break: keep-all !important;
             overflow-wrap: break-word !important;
         }
 
-        div[data-testid="stTabPanel"] li > p,
-        .note-detail-area li > p {
+        .custom-markdown-box li > p {
             margin-left: 0px !important;
             display: inline !important;
-        }
-
-        div[data-testid="stTabPanel"] textarea,
-        .note-detail-area textarea {
-            padding-left: 1.2rem !important;
-            line-height: 1.65 !important;
-            word-break: keep-all !important;
         }
 
         section[data-testid="stSidebar"] div[data-testid="stHorizontalBlock"] {
@@ -705,11 +707,11 @@ if st.session_state.main_mode == "exam":
                     st.write("---")
                     st.markdown("#### 📖 개념 설명 (서식 적용 화면)")
                     with st.container(border=True):
-                        st.markdown(format_readable_text(q_data['concept']))
+                        render_formatted_content(q_data['concept'])
             else:
                 if q_data['concept']:
                     with st.container(border=True):
-                        st.markdown(format_readable_text(q_data['concept']))
+                        render_formatted_content(q_data['concept'])
                 else:
                     st.caption("작성된 개념 설명이 없습니다. '입력창 보이기'를 눌러 내용을 입력해 보세요.")
     
@@ -753,11 +755,11 @@ if st.session_state.main_mode == "exam":
                     st.write("---")
                     st.markdown("#### 📄 모범 답안 (서식 적용 화면)")
                     with st.container(border=True):
-                        st.markdown(format_readable_text(q_data['answer']))
+                        render_formatted_content(q_data['answer'])
             else:
                 if q_data['answer']:
                     with st.container(border=True):
-                        st.markdown(format_readable_text(q_data['answer']))
+                        render_formatted_content(q_data['answer'])
                 else:
                     st.caption("작성된 모범 답안이 없습니다. '입력창 보이기'를 눌러 내용을 입력해 보세요.")
     
@@ -801,11 +803,11 @@ if st.session_state.main_mode == "exam":
                     st.write("---")
                     st.markdown("#### 📎 추가 자료 및 메모 (서식 적용 화면)")
                     with st.container(border=True):
-                        st.markdown(format_readable_text(q_data['extra']))
+                        render_formatted_content(q_data['extra'])
             else:
                 if q_data['extra']:
                     with st.container(border=True):
-                        st.markdown(format_readable_text(q_data['extra']))
+                        render_formatted_content(q_data['extra'])
                 else:
                     st.caption("작성된 추가 자료가 없습니다. '입력창 보이기'를 눌러 내용을 입력해 보세요.")
     
@@ -916,7 +918,7 @@ if st.session_state.main_mode == "exam":
                     note_content = selected_item.get('note', '')
                     if note_content:
                         with st.container(border=True):
-                            st.markdown(format_readable_text(note_content))
+                            render_formatted_content(note_content)
                     else:
                         st.caption("작성된 설명 내용이 없습니다.")
                     
@@ -988,7 +990,7 @@ elif st.session_state.main_mode == "note":
     if "note_sub_mode" not in st.session_state:
         st.session_state.note_sub_mode = "list"
 
-    # [수정] 학습노트 상세 화면 들여쓰기 보정 (note-detail-area 클래스 부여)
+    # [수정 적용] 학습노트 상세 화면 들여쓰기 보정
     if st.session_state.note_sub_mode == "detail" and st.session_state.selected_note_id:
         note = next((n for n in st.session_state.notes if n["id"] == st.session_state.selected_note_id), None)
         
@@ -1006,12 +1008,12 @@ elif st.session_state.main_mode == "note":
 
             st.markdown("---")
 
-            # 본문 들여쓰기 및 서식 정렬을 위해 div 컨테이너로 감싸서 렌더링
-            st.markdown("<div class='note-detail-area'>", unsafe_allow_html=True)
-            if note.get("content"):
-                st.markdown(format_readable_text(note["content"]))
-            else:
-                st.info("작성된 노트 내용이 없습니다.")
+            # 기출문제와 완전히 동일한 컨테이너 및 들여쓰기 서식 적용
+            with st.container(border=True):
+                if note.get("content"):
+                    render_formatted_content(note["content"])
+                else:
+                    st.info("작성된 노트 내용이 없습니다.")
 
             imgs = note.get("images", [])
             if not imgs and note.get("image_base64"):
@@ -1038,7 +1040,6 @@ elif st.session_state.main_mode == "note":
                 st.markdown("**🔗 관련 링크**")
                 for link in links:
                     st.markdown(f"- [{link}]({link})")
-            st.markdown("</div>", unsafe_allow_html=True)
 
         else:
             st.error("해당 노트를 찾을 수 없습니다.")
