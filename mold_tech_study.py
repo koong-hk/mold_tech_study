@@ -123,30 +123,115 @@ def render_mini_calendar():
     return html
 
 def format_readable_text(text: str) -> str:
-    """노트 본문의 LaTeX 수식 및 텍스트 가독성 자동 보정"""
+    """노트 본문의 LaTeX 수식 및 콜론(:) 기준 수직 들여쓰기 자동 보정"""
     if not text or not str(text).strip():
         return "*작성된 내용이 없습니다.*"
-    
+
     text_str = str(text)
-    
+
     # 1. 괄호 수식 구문 (예: (F_{clamp} = P_{cavity} \times A_{projected})) 자동 변환
     def replace_bracket_math(match):
         formula = match.group(1).strip()
-        formula_clean = re.sub(r'_\{([a-zA-Z0-9_\-]+)\}', r'_{\\text{\1}}', formula)
+        formula_clean = re.sub(
+            r"_\{([a-zA-Z0-9_\-]+)\}", r"_{\\text{\1}}", formula
+        )
         return f"\n\n$$\n{formula_clean}\n$$\n\n"
 
-    text_str = re.sub(r'\(([^)]*?=[^)]*?\\[a-zA-Z]+[^)]*?)\)', replace_bracket_math, text_str)
-    
+    text_str = re.sub(
+        r"\(([^)]*?=[^)]*?\\[a-zA-Z]+[^)]*?)\)", replace_bracket_math, text_str
+    )
+
     # 2. 명시적 블록 수식 $$ ... $$ 내 단어 첨자 보정
     def clean_latex_block(match):
         formula = match.group(1)
-        formula_clean = re.sub(r'_\{([a-zA-Z0-9_\-]+)\}', r'_{\\text{\1}}', formula)
-        return f"\n$$\n{formula_clean}\n$$\n"
+        formula_clean = re.sub(
+            r"_\{([a-zA-Z0-9_\-]+)\}", r"_{\\text{\1}}", formula
+        )
+        return f"\n\n$$\n{formula_clean}\n$$\n\n"
 
-    text_str = re.sub(r'\$\$(.*?)\$\$', clean_latex_block, text_str, flags=re.DOTALL)
+    text_str = re.sub(
+        r"\$\$(.*?)\$\$", clean_latex_block, text_str, flags=re.DOTALL
+    )
 
-    return text_str
+    # 3. 콜론(:) 기준 수직 들여쓰기 레이아웃 자동 변환 (Flexbox 연동)
+    lines = text_str.split("\n")
+    new_lines = []
 
+    # 소제목 및 분기 감지 정규식
+    subhead_pattern = r"^\s*(?:\(\d+\)|[\u2460-\u2473]|\d+\.|\#)"
+
+    for line in lines:
+        stripped_line = line.strip()
+        if not stripped_line:
+            new_lines.append("")
+            continue
+
+        # URL, 기존 HTML, 수식 구문, 마크다운 제목(#), 구분선(---)은 변환 대상에서 제외
+        if (
+            "http://" in line
+            or "https://" in line
+            or "$$" in line
+            or stripped_line.startswith("<")
+            or stripped_line.startswith("#")
+            or stripped_line == "---"
+        ):
+            new_lines.append(stripped_line)
+            continue
+
+        # 불릿 기호(*, -, •, 숫자.), 항목명, 콜론, 본문 내용을 명확히 분리하는 정규식
+        match = re.match(
+            r"^\s*(?P<bullet>(?:\d+\.|\-|\*|\•)?)\s*(?P<label>[^:\n]{1,30}:)\s*(?P<tail>.+)$",
+            line,
+        )
+        if match:
+            bullet = match.group("bullet") or ""
+            label = match.group("label")
+            tail = match.group("tail")
+
+            # 시간 표시(예: 12:30)가 아닌 경우에만 적용
+            if not re.match(r"^\s*\d{1,2}:\d{2}", line):
+                label_clean = label.replace("**", "").strip()
+                tail_clean = re.sub(r"^\s*\*\*\s*", "", tail).strip()
+
+                # HTML 태그 내부 마크다운 볼드(**)를 HTML <b> 태그로 치환
+                tail_clean = re.sub(r"\*\*(.*?)\*\*", r"<b>\1</b>", tail_clean)
+
+                # 불릿 기호 정제 (* 또는 - 는 '• ' 로 변환)
+                if bullet in ["*", "-"]:
+                    bullet_prefix = "• "
+                elif bullet:
+                    bullet_prefix = f"{bullet} "
+                else:
+                    bullet_prefix = ""
+
+                head_final = f"{bullet_prefix}{label_clean}"
+
+                # Streamlit 마크다운 파서가 완전한 독립 블록 요소로 인지하도록 빈 줄(\n\n) 보장
+                new_lines.append(
+                    f'\n\n<div class="colon-line"><span class="colon-head">{head_final}</span><span class="colon-tail">{tail_clean}</span></div>\n\n'
+                )
+                continue
+
+        # 이전 줄이 colon-line이더라도 현재 줄이 (1), ①, # 등의 소제목이면 절대로 병합하지 않음
+        if (
+            new_lines
+            and "colon-tail" in new_lines[-1]
+            and not re.match(r"^\s*(?:\d+\.|\-|\*|\•|\#)", line)
+            and not re.match(subhead_pattern, line)
+            and stripped_line != "---"
+        ):
+
+            last_line = new_lines.pop().strip()
+            merged_text = re.sub(r"\*\*(.*?)\*\*", r"<b>\1</b>", stripped_line)
+            merged_line = re.sub(
+                r"</span>\s*</div>$", f" {merged_text}</span></div>", last_line
+            )
+            new_lines.append(f"\n\n{merged_line}\n\n")
+            continue
+
+        new_lines.append(stripped_line)
+
+    return "\n".join(new_lines)
 
 # -----------------------------------------------------------------------------
 # 5. 세션 상태 초기화
