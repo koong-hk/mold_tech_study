@@ -1,88 +1,59 @@
-import base64
-import calendar
-from datetime import date, datetime, timedelta, timezone
+import streamlit as st
+import pandas as pd
 import json
 import os
 import re
 import time
-import pandas as pd
-import streamlit as st
+import calendar
+from datetime import datetime, date, timezone, timedelta
+import base64
 
-# -----------------------------------------------------------------------------
-# 1. 페이지 설정 (반드시 모든 Streamlit 명령어 중 최상단에 위치해야 함)
-# -----------------------------------------------------------------------------
-st.set_page_config(page_title="금형기술사 학습 시스템", layout="wide")
+NOTES_FILE = "notes.json"
+USER_DATA_FILE = "user_study_data.json"
 
-# -----------------------------------------------------------------------------
-# 2. 파일 경로 및 절대경로 설정
-# -----------------------------------------------------------------------------
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-NOTES_FILE = os.path.join(BASE_DIR, "notes.json")
-USER_DATA_FILE = os.path.join(BASE_DIR, "user_study_data.json")
-IMAGE_DIR = os.path.join(BASE_DIR, "saved_images")
-
-if not os.path.exists(IMAGE_DIR):
-    os.makedirs(IMAGE_DIR, exist_ok=True)
-
-# -----------------------------------------------------------------------------
-# 3. 데이터 입출력 함수
-# -----------------------------------------------------------------------------
+# 한국 표준시(KST: UTC+9) 기준 오늘 날짜 구하기 함수
 def get_kst_today():
-    """한국 표준시(KST: UTC+9) 기준 오늘 날짜 구하기"""
     kst = timezone(timedelta(hours=9))
     return datetime.now(kst).date()
 
+# 학습노트 로드 함수
 def load_notes():
-    """학습노트 데이터 안전 로드"""
     if os.path.exists(NOTES_FILE):
         try:
             with open(NOTES_FILE, "r", encoding="utf-8") as f:
-                data = json.load(f)
-                return data if isinstance(data, list) else []
-        except Exception as e:
-            st.error(f"노트 파일 로드 오류: {e}")
+                return json.load(f)
+        except Exception:
             return []
     return []
 
+# 학습노트 저장 함수
 def save_notes(notes):
-    """학습노트 데이터 안전 저장"""
-    try:
-        with open(NOTES_FILE, "w", encoding="utf-8") as f:
-            json.dump(notes, f, ensure_ascii=False, indent=2)
-    except Exception as e:
-        st.error(f"노트 저장 오류: {e}")
+    with open(NOTES_FILE, "w", encoding="utf-8") as f:
+        json.dump(notes, f, ensure_ascii=False, indent=2)
 
+# 사용자 데이터 로드 함수
 def load_user_data():
-    """기출문제 학습 데이터 및 D-Day 안전 로드"""
     if os.path.exists(USER_DATA_FILE):
         try:
-            with open(USER_DATA_FILE, "r", encoding="utf-8") as f:
-                data = json.load(f)
-                return data if isinstance(data, dict) else {}
-        except Exception as e:
-            st.error(f"사용자 데이터 로드 오류: {e}")
+            with open(USER_DATA_FILE, 'r', encoding='utf-8') as f:
+                return json.load(f)
+        except Exception:
             return {}
     return {}
 
+# 사용자 데이터 저장 함수
 def save_user_data(data):
-    """기출문제 학습 데이터 및 D-Day 안전 저장"""
-    try:
-        with open(USER_DATA_FILE, "w", encoding="utf-8") as f:
-            json.dump(data, f, ensure_ascii=False, indent=2)
-    except Exception as e:
-        st.error(f"사용자 데이터 저장 오류: {e}")
+    with open(USER_DATA_FILE, 'w', encoding='utf-8') as f:
+        json.dump(data, f, ensure_ascii=False, indent=4)
 
+# 이미지를 base64 텍스트로 인코딩하는 함수
 def convert_image_to_base64(uploaded_file):
-    """이미지를 base64 텍스트로 인코딩"""
     if uploaded_file is not None:
         return base64.b64encode(uploaded_file.getvalue()).decode()
     return None
 
-# -----------------------------------------------------------------------------
-# 4. UI 및 텍스트/수식 포맷팅 헬퍼 함수
-# -----------------------------------------------------------------------------
+# 커스텀 미니 달력 HTML 생성 함수 (폭 고정 & 요일 폭 동일 적용)
 def render_mini_calendar():
-    """커스텀 미니 달력 HTML 생성 함수"""
     today = get_kst_today()
     year, month, today_day = today.year, today.month, today.day
     cal = calendar.monthcalendar(year, month)
@@ -112,134 +83,63 @@ def render_mini_calendar():
             if day == 0:
                 html += "<td style='width: 14.285%; padding: 2px 0;'></td>"
             elif day == today_day:
+                # 오늘 날짜 하이라이트
                 html += f"""<td style='width: 14.285%; padding: 2px 0; text-align: center;'>
                     <span style='background-color: #ff4b4b; color: #ffffff; border-radius: 50%; width: 20px; height: 20px; line-height: 20px; display: inline-block; font-weight: bold; font-size: 0.72rem; margin: 0 auto;'>{day}</span>
                 </td>"""
             else:
-                color_style = "color: #ff7979;" if idx == 0 else ("color: #64b5f6;" if idx == 6 else "color: #ffffff;")
+                if idx == 0:     # 일요일: 연한 빨강
+                    color_style = "color: #ff7979;"
+                elif idx == 6:   # 토요일: 연한 파랑
+                    color_style = "color: #64b5f6;"
+                else:            # 평일: 흰색
+                    color_style = "color: #ffffff;"
                 html += f"<td style='width: 14.285%; padding: 2px 0; {color_style}'>{day}</td>"
         html += "</tr>"
     html += "</tbody></table></div>"
     return html
 
-def format_readable_text(text: str) -> str:
-    """노트 본문의 LaTeX 수식 및 콜론(:) 기준 수직 들여쓰기 자동 보정"""
+def format_readable_text(text):
     if not text or not str(text).strip():
         return "*작성된 내용이 없습니다.*"
+    return str(text)
 
-    text_str = str(text)
-
-    # 1. 괄호 수식 구문 (예: (F_{clamp} = P_{cavity} \times A_{projected})) 자동 변환
+def format_readable_text(text: str) -> str:
+    """노트 본문의 LaTeX 수식 및 텍스트 가독성을 자동으로 보정합니다."""
+    if not text:
+        return ""
+    
+    # 1. 괄호로 감싸진 수식 구문 (예: (F_{clamp} = P_{cavity} \times A_{projected})) 자동 변환
     def replace_bracket_math(match):
         formula = match.group(1).strip()
-        formula_clean = re.sub(
-            r"_\{([a-zA-Z0-9_\-]+)\}", r"_{\\text{\1}}", formula
-        )
+        # 단어형 첨자_{text}를 \text{} 형태로 자동 변환하여 정갈한 수식 폰트 적용
+        formula_clean = re.sub(r'_\{([a-zA-Z0-9_\-]+)\}', r'_{\\text{\1}}', formula)
         return f"\n\n$$\n{formula_clean}\n$$\n\n"
 
-    text_str = re.sub(
-        r"\(([^)]*?=[^)]*?\\[a-zA-Z]+[^)]*?)\)", replace_bracket_math, text_str
-    )
-
+    # '='와 LaTeX 연산자가 포함된 괄호 구문 패턴 감지
+    text = re.sub(r'\(([^)]*?=[^)]*?\\[a-zA-Z]+[^)]*?)\)', replace_bracket_math, text)
+    
     # 2. 명시적 블록 수식 $$ ... $$ 내 단어 첨자 보정
     def clean_latex_block(match):
         formula = match.group(1)
-        formula_clean = re.sub(
-            r"_\{([a-zA-Z0-9_\-]+)\}", r"_{\\text{\1}}", formula
-        )
-        return f"\n\n$$\n{formula_clean}\n$$\n\n"
+        formula_clean = re.sub(r'_\{([a-zA-Z0-9_\-]+)\}', r'_{\\text{\1}}', formula)
+        return f"\n$$\n{formula_clean}\n$$\n"
 
-    text_str = re.sub(
-        r"\$\$(.*?)\$\$", clean_latex_block, text_str, flags=re.DOTALL
-    )
+    text = re.sub(r'\$\$(.*?)\$\$', clean_latex_block, text, flags=re.DOTALL)
 
-    # 3. 콜론(:) 기준 수직 들여쓰기 레이아웃 자동 변환 (Flexbox 연동)
-    lines = text_str.split("\n")
-    new_lines = []
-
-    # 소제목 및 분기 감지 정규식
-    subhead_pattern = r"^\s*(?:\(\d+\)|[\u2460-\u2473]|\d+\.|\#)"
-
-    for line in lines:
-        stripped_line = line.strip()
-        if not stripped_line:
-            new_lines.append("")
-            continue
-
-        # URL, 기존 HTML, 수식 구문, 마크다운 제목(#), 구분선(---)은 변환 대상에서 제외
-        if (
-            "http://" in line
-            or "https://" in line
-            or "$$" in line
-            or stripped_line.startswith("<")
-            or stripped_line.startswith("#")
-            or stripped_line == "---"
-        ):
-            new_lines.append(stripped_line)
-            continue
-
-        # 불릿 기호(*, -, •, 숫자.), 항목명, 콜론, 본문 내용을 명확히 분리하는 정규식
-        match = re.match(
-            r"^\s*(?P<bullet>(?:\d+\.|\-|\*|\•)?)\s*(?P<label>[^:\n]{1,30}:)\s*(?P<tail>.+)$",
-            line,
-        )
-        if match:
-            bullet = match.group("bullet") or ""
-            label = match.group("label")
-            tail = match.group("tail")
-
-            # 시간 표시(예: 12:30)가 아닌 경우에만 적용
-            if not re.match(r"^\s*\d{1,2}:\d{2}", line):
-                label_clean = label.replace("**", "").strip()
-                tail_clean = re.sub(r"^\s*\*\*\s*", "", tail).strip()
-
-                # HTML 태그 내부 마크다운 볼드(**)를 HTML <b> 태그로 치환
-                tail_clean = re.sub(r"\*\*(.*?)\*\*", r"<b>\1</b>", tail_clean)
-
-                # 불릿 기호 정제 (* 또는 - 는 '• ' 로 변환)
-                if bullet in ["*", "-"]:
-                    bullet_prefix = "• "
-                elif bullet:
-                    bullet_prefix = f"{bullet} "
-                else:
-                    bullet_prefix = ""
-
-                head_final = f"{bullet_prefix}{label_clean}"
-
-                # Streamlit 마크다운 파서가 완전한 독립 블록 요소로 인지하도록 빈 줄(\n\n) 보장
-                new_lines.append(
-                    f'\n\n<div class="colon-line"><span class="colon-head">{head_final}</span><span class="colon-tail">{tail_clean}</span></div>\n\n'
-                )
-                continue
-
-        # 이전 줄이 colon-line이더라도 현재 줄이 (1), ①, # 등의 소제목이면 절대로 병합하지 않음
-        if (
-            new_lines
-            and "colon-tail" in new_lines[-1]
-            and not re.match(r"^\s*(?:\d+\.|\-|\*|\•|\#)", line)
-            and not re.match(subhead_pattern, line)
-            and stripped_line != "---"
-        ):
-
-            last_line = new_lines.pop().strip()
-            merged_text = re.sub(r"\*\*(.*?)\*\*", r"<b>\1</b>", stripped_line)
-            merged_line = re.sub(
-                r"</span>\s*</div>$", f" {merged_text}</span></div>", last_line
-            )
-            new_lines.append(f"\n\n{merged_line}\n\n")
-            continue
-
-        new_lines.append(stripped_line)
-
-    return "\n".join(new_lines)
-
+    return text
 # -----------------------------------------------------------------------------
-# 5. 세션 상태 초기화
+# 세션 상태 및 사용자 데이터 초기화
 # -----------------------------------------------------------------------------
+ # -----------------------------------------------------------------------------
+# 세션 상태 및 사용자 데이터 초기화 (안전 방어 코드 적용)
+# -----------------------------------------------------------------------------
+# 1. user_data 세션 안전 초기화
 if "user_data" not in st.session_state or not isinstance(st.session_state.user_data, dict):
     loaded_data = load_user_data()
     st.session_state["user_data"] = loaded_data if isinstance(loaded_data, dict) else {}
 
+# load_user_data() 결과가 None일 경우 대비 2차 검사
 if not isinstance(st.session_state.get("user_data"), dict):
     st.session_state["user_data"] = {}
 
@@ -249,6 +149,7 @@ if "main_mode" not in st.session_state:
 if "notes" not in st.session_state:
     st.session_state.notes = load_notes()
 
+# 2. [에러 해결] get() 함수를 사용해 안전하게 _d_day_target 참조
 if "d_day_target" not in st.session_state:
     user_data_dict = st.session_state.get("user_data", {})
     st.session_state.d_day_target = user_data_dict.get("_d_day_target", None)
@@ -261,196 +162,168 @@ if "show_detail" not in st.session_state:
 
 if "current_q" not in st.session_state:
     st.session_state.current_q = None
+ 
+
+# 저장된 파일에서 d_day_target을 불러와 세션 상태에 저장 (미설정 시 None)
+if "d_day_target" not in st.session_state:
+    st.session_state.d_day_target = st.session_state.user_data.get("_d_day_target", None)
+
+if "show_d_day_picker" not in st.session_state:
+    st.session_state.show_d_day_picker = False
+
+
+
 
 # -----------------------------------------------------------------------------
-# 6. 정제된 CSS 스타일 적용 (우측 탭 영역 들여쓰기 및 줄바꿈 라인 정렬 추가)
+# 1. 페이지 설정 및 CSS 적용
 # -----------------------------------------------------------------------------
+st.set_page_config(page_title="금형기술사 학습 시스템", layout="wide")
+
+IMAGE_DIR = "saved_images"
+if not os.path.exists(IMAGE_DIR):
+    os.makedirs(IMAGE_DIR, exist_ok=True)
+
 st.markdown("""
     <style>
-        /* 1. 메인 영역 패딩 최소화 */
+        /* 1. 메인 영역 상단 여백 최소화 */
         .block-container {
             padding-top: 2.0rem !important;
             padding-bottom: 1.5rem !important;
         }
         
+        /* 2. 제목 글자 크기 및 여백 축소 */
         div[data-testid="stMarkdownContainer"] h1 {
             font-size: 1.4rem !important;
             margin-top: 0px !important;
             margin-bottom: 0.8rem !important;
         }
 
-        /* 2. 사이드바 너비 지정 */
+        /* 3. 좌측 사이드바 폭 및 수직 수평 간격 축소 */
         section[data-testid="stSidebar"] {
             width: 280px !important;
         }
+        
+        section[data-testid="stSidebar"] div[data-testid="stVerticalBlock"] {
+            gap: 0.2rem !important;
+            padding-top: 0.2rem !important;
+        }
 
-        /* 3. 사이드바 기본 버튼 스타일 (블랙 테마) */
+        section[data-testid="stSidebar"] div[data-testid="stElementContainer"] {
+            margin-bottom: 2px !important;
+        }
+
+        /* 4. 파일 업로더 너비 100% 확대 */
+        div[data-testid="stFileUploader"] {
+            width: 100% !important;
+            padding: 0px !important;
+            margin-bottom: 0.2rem !important;
+        }
+
+        div[data-testid="stFileUploader"] section[data-testid="stFileUploaderDropzone"] {
+            padding: 4px 8px !important;
+            min-height: 48px !important;
+            width: 100% !important;
+        }
+
+        /* 5. 사이드바 버튼 전체 100% 너비, 블랙 배경 & 흰색 글자 스타일 지정 */
+        div.stButton > button {
+            display: inline-flex !important;
+            justify-content: center !important;
+            align-items: center !important;
+            text-align: center !important;
+            margin-top: 2px !important;
+            margin-bottom: 2px !important;
+            padding: 4px 12px !important;
+            min-height: 32px !important;
+            height: 32px !important;
+            width: 100% !important;
+            border-radius: 8px !important;
+        }
+        
         section[data-testid="stSidebar"] div.stButton > button {
             width: 100% !important;
-            height: 34px !important;
-            min-height: 34px !important;
             font-size: 0.82rem !important;
             background-color: #000000 !important;
             color: #ffffff !important;
             border: 1px solid #444444 !important;
-            border-radius: 8px !important;
-            box-sizing: border-box !important;
-            padding: 0 4px !important;
-            letter-spacing: -0.3px !important;
+            transition: all 0.2s ease;
         }
 
         section[data-testid="stSidebar"] div.stButton > button:hover {
             background-color: #222222 !important;
+            color: #ffffff !important;
             border-color: #666666 !important;
         }
 
-        /* 4. 필터링 영역 항목 간 여백 지정 */
-        section[data-testid="stSidebar"] div[data-testid="stTextInput"],
-        section[data-testid="stSidebar"] div[data-testid="stSelectbox"],
-        section[data-testid="stSidebar"] div[data-testid="stMultiSelect"] {
-            margin-bottom: 12px !important;
-            margin-top: 2px !important;
-        }
-
-        section[data-testid="stSidebar"] div[data-testid="stCheckbox"] {
-            margin-top: 8px !important;
-            margin-bottom: 12px !important;
-        }
-
-        section[data-testid="stSidebar"] label {
-            margin-bottom: 3px !important;
+        div.stButton > button p {
+            margin: 0 !important;
             padding: 0 !important;
+            text-align: center !important;
+            font-size: 0.82rem !important;
+            color: #ffffff !important;
         }
 
+        /* 6. 사이드바 필터 라벨 및 드롭다운 밀도 조정 */
+        section[data-testid="stSidebar"] label {
+            text-align: left !important;
+            justify-content: flex-start !important;
+            margin-bottom: 0px !important;
+            padding: 0px !important;
+        }
+        
         section[data-testid="stSidebar"] label p {
             font-size: 0.82rem !important;
             font-weight: 600 !important;
-            letter-spacing: -0.3px !important;
-            margin: 0 !important;
-        }
-
-        /* 5. 선택박스 내부 글자 줄간격(line-height) 및 패딩 최소화 */
-        section[data-testid="stSidebar"] input,
-        section[data-testid="stSidebar"] div[data-baseweb="select"] *,
-        div[data-baseweb="popover"] * {
-            font-size: 0.8rem !important;
-            letter-spacing: -0.4px !important;
-            line-height: 1.0 !important;
-        }
-
-        section[data-testid="stSidebar"] div[data-baseweb="select"] > div {
-            min-height: 30px !important;
-            padding: 1px 4px !important;
-            line-height: 1.0 !important;
-        }
-
-        section[data-testid="stSidebar"] div[data-baseweb="tag"] {
-            margin: 1px 2px !important;
-            padding: 0px 4px !important;
-            height: 20px !important;
-            line-height: 1.0 !important;
-            border-radius: 4px !important;
-        }
-
-        section[data-testid="stSidebar"] div[data-baseweb="tag"] span {
-            font-size: 0.75rem !important;
-            letter-spacing: -0.4px !important;
-            line-height: 1.0 !important;
-        }
-
-        section[data-testid="stSidebar"] div[data-testid="stCheckbox"] span {
-            font-size: 0.8rem !important;
-            letter-spacing: -0.3px !important;
-            line-height: 1.1 !important;
-        }
-
-        /* =================================================================== */
-        /* 6. [수정] 우측 탭 영역 순서 목록(1. 2. 3.) 내어쓰기 및 단락 라인 정렬 */
-        /* =================================================================== */
-        /* 1) 제목/헤더(h1~h6) 기준선 고정 */
-        div[data-testid="stTabPanel"] h1,
-        div[data-testid="stTabPanel"] h2,
-        div[data-testid="stTabPanel"] h3,
-        div[data-testid="stTabPanel"] h4,
-        div[data-testid="stTabPanel"] h5,
-        div[data-testid="stTabPanel"] h6 {
-            margin-left: 0px !important;
-            margin-bottom: 0.5rem !important;
-        }
-
-        /* 2) 일반 본문 단락(<p>) 기본 들여쓰기 */
-        div[data-testid="stTabPanel"] div[data-testid="stMarkdownContainer"] > p {
-            margin-left: 1.2rem !important;
-            word-break: keep-all !important;
-            overflow-wrap: break-word !important;
-            line-height: 1.65 !important;
-        }
-
-        /* 3) 순서 있는 목록(<ol>, <li>) 내어쓰기(Hanging Indent) 및 수직 라인 맞춤 */
-        div[data-testid="stTabPanel"] ol,
-        div[data-testid="stTabPanel"] ul {
-            margin-left: 1.2rem !important;      /* 전체 목록 들여쓰기 */
-            padding-left: 1.2rem !important;     /* 번호(1. 2.)와 본문 사이 적정 간격 */
-            margin-bottom: 0.8rem !important;
-        }
-
-        div[data-testid="stTabPanel"] li {
-            margin-bottom: 0.4rem !important;
-            line-height: 1.65 !important;
-            word-break: keep-all !important;
-            overflow-wrap: break-word !important;
-        }
-
-        /* li 항목 내 p 태그 중복 들여쓰기 방지 (수직 라인 이탈 차단) */
-        div[data-testid="stTabPanel"] li > p {
-            margin-left: 0px !important;
-            display: inline !important;
-        }
-
-        /* 4) 입력창(st.text_area) 내부 줄바꿈 라인 유지 */
-        div[data-testid="stTabPanel"] textarea {
-            padding-left: 1.2rem !important;
-            line-height: 1.65 !important;
-            word-break: keep-all !important;
-        }
-
-        /* 7. D-Day 레이아웃 및 우측 박스 가로 100% 보정 */
-        section[data-testid="stSidebar"] div[data-testid="stHorizontalBlock"] {
-            gap: 6px !important;
-            align-items: center !important;
-            width: 100% !important;
-            margin-top: 6px !important;
-        }
-
-        section[data-testid="stSidebar"] div[data-testid="stMarkdownContainer"],
-        section[data-testid="stSidebar"] div[data-testid="stMarkdownContainer"] > p {
-            width: 100% !important;
             margin: 0 !important;
             padding: 0 !important;
         }
 
+        section[data-testid="stSidebar"] div[data-testid="stSelectbox"],
+        section[data-testid="stSidebar"] div[data-testid="stMultiSelect"],
+        section[data-testid="stSidebar"] div[data-testid="stTextInput"] {
+            margin-bottom: 4px !important;
+            margin-top: 0px !important;
+            padding: 0px !important;
+        }
+
+        section[data-testid="stSidebar"] div[data-baseweb="select"] > div {
+            min-height: 32px !important;
+            padding: 0px 6px !important;
+            display: flex !important;
+            align-items: center !important;
+        }
+
+        section[data-testid="stSidebar"] div[data-baseweb="select"] * {
+            font-size: 0.82rem !important;
+            line-height: 1.1 !important;
+        }
+
+        /* 7. D-Day 표시 박스 커스텀 */
         .dday-box {
             background-color: #000000;
             color: #ffffff;
             font-weight: bold;
-            font-size: 0.85rem;
-            letter-spacing: -0.2px;
-            height: 34px !important;
-            line-height: 32px !important;
+            font-size: 0.88rem;
+            line-height: 30px;
             text-align: center;
             border-radius: 8px;
+            height: 32px;
             border: 1px solid #444444;
-            width: 100% !important;
-            display: block !important;
-            box-sizing: border-box !important;
-            margin: 0 !important;
-            padding: 0 !important;
+            width: 100%;
+            box-sizing: border-box;
+            margin-top: 2px;
+            margin-bottom: 2px;
         }
     </style>
 """, unsafe_allow_html=True)
 
+if "show_detail" not in st.session_state:
+    st.session_state.show_detail = False
+if "current_q" not in st.session_state:
+    st.session_state.current_q = None
+
 # -----------------------------------------------------------------------------
-# 7. 데이터 로드 헬퍼
+# 2. 데이터 불러오기
 # -----------------------------------------------------------------------------
 @st.cache_data
 def load_excel_data(uploaded_file):
@@ -476,11 +349,13 @@ def load_excel_data(uploaded_file):
     return df
 
 # -----------------------------------------------------------------------------
-# 8. 사이드바 구성
+# 3. 사이드바 레이아웃
 # -----------------------------------------------------------------------------
 with st.sidebar:
+    # 1. 상단 100% 폭 파일 업로더
     uploaded_file = st.file_uploader("📂 엑셀 파일 업로드", type=['xlsx', 'xls'])
     
+    # 2. 모드 전환 버튼 (기출문제 / 학습노트)
     col_nav1, col_nav2 = st.columns(2)
     with col_nav1:
         btn_exam_type = "primary" if st.session_state.main_mode == "exam" else "secondary"
@@ -498,10 +373,12 @@ with st.sidebar:
     st.markdown("---")
     st.markdown("**🔍 문제 필터링**")
 
+    # 3. 키워드 검색 및 필터 컨트롤
     search_keyword = st.text_input("문제 키워드 검색", placeholder="검색어 입력...", label_visibility="collapsed")
 
     df = load_excel_data(uploaded_file)
 
+    # 데이터 전처리
     for q in df['문제']:
         if q not in st.session_state.user_data:
             st.session_state.user_data[q] = {
@@ -527,14 +404,14 @@ with st.sidebar:
     sort_by_clicks = st.checkbox("자주 본 문제 순 정렬 (조회수 ⇧)")
 
     # -------------------------------------------------------------------------
-    # 사이드바 하단: 미니 달력 & D-Day 영역 (5:5 정렬 및 간격 정돈)
+    # 4. 사이드바 하단: 미니 달력 & D-Day 영역
     # -------------------------------------------------------------------------
-    st.markdown("<div style='margin-top: 15px; border-top: 1px solid #333333; padding-top: 10px;'></div>", unsafe_allow_html=True)
-
+    st.markdown("<div style='margin-top: 25px; border-top: 1px solid #333333; padding-top: 15px;'></div>", unsafe_allow_html=True)
+    
     # 블랙 배경 미니 달력 출력
     st.markdown(render_mini_calendar(), unsafe_allow_html=True)
 
-    # D-Day 수치 계산
+    # D-Day 계산 로직 (KST 기준)
     today_date = get_kst_today()
     if st.session_state.d_day_target:
         target_dt = datetime.strptime(st.session_state.d_day_target, "%Y-%m-%d").date()
@@ -548,27 +425,28 @@ with st.sidebar:
     else:
         d_day_str = "D-XX"
 
-    # 좌/우 5:5 비율 컬럼 분할
-    col_d_btn, col_d_disp = st.columns([50, 50], gap="small", vertical_alignment="center")
-
+    col_d_btn, col_d_disp = st.columns([35, 65], gap="small")
+    
     with col_d_btn:
-        if st.button("D-Day 설정", use_container_width=True, key="btn_set_dday"):
+        if st.button("D-Day", use_container_width=True, key="btn_set_dday"):
             st.session_state.show_d_day_picker = not st.session_state.show_d_day_picker
 
     with col_d_disp:
         st.markdown(f"<div class='dday-box'>{d_day_str}</div>", unsafe_allow_html=True)
 
-    # 날짜 피커
+    # D-Day 날짜 선택 피커 (버튼 클릭 시 표시)
     if st.session_state.show_d_day_picker:
         default_val = datetime.strptime(st.session_state.d_day_target, "%Y-%m-%d").date() if st.session_state.d_day_target else get_kst_today()
         selected_date = st.date_input("목표 시험일 선택", value=default_val, key="d_day_picker_input")
         if st.button("확인 및 저장", use_container_width=True, key="btn_save_dday"):
             saved_date_str = selected_date.strftime("%Y-%m-%d")
             st.session_state.d_day_target = saved_date_str
+            # user_study_data.json 파일에 설정값 저장
             st.session_state.user_data["_d_day_target"] = saved_date_str
             save_user_data(st.session_state.user_data)
             st.session_state.show_d_day_picker = False
             st.rerun()
+
 # -----------------------------------------------------------------------------
 # 5. 필터링 조건 적용
 # -----------------------------------------------------------------------------
@@ -960,40 +838,6 @@ if st.session_state.main_mode == "exam":
     # st.markdown("<div style='margin-top: 15px;'></div>", unsafe_allow_html=True)
             
 elif st.session_state.main_mode == "note":
-
-    st.markdown("### 📖 서술형 학습노트 관리")
-    
-    # 백업 및 데이터 관리 (Expander)
-    with st.expander("💾 노트 데이터 백업 / 복원 (JSON 파일)"):
-        col_export, col_import = st.columns(2)
-        
-        # 1) 내 컴퓨터로 백업 다운로드
-        with col_export:
-            notes_json_str = json.dumps(st.session_state.notes, ensure_ascii=False, indent=2)
-            st.download_button(
-                label="📥 노트 데이터 백업 다운로드",
-                data=notes_json_str,
-                file_name="notes_backup.json",
-                mime="application/json",
-                use_container_width=True
-            )
-        
-        # 2) 파일 올려서 복원하기
-        with col_import:
-            uploaded_backup = st.file_uploader("📤 백업 JSON 파일 불러오기", type=["json"], key="restore_notes_uploader")
-            if uploaded_backup is not None:
-                if st.button("🔄 데이터 복원 적용", type="primary", use_container_width=True):
-                    try:
-                        loaded_backup_notes = json.load(uploaded_backup)
-                        if isinstance(loaded_backup_notes, list):
-                            st.session_state.notes = loaded_backup_notes
-                            save_notes(st.session_state.notes)
-                            st.success("성공적으로 노트를 복원했습니다!")
-                            st.rerun()
-                        else:
-                            st.error("올바른 노트 백업 파일 형식이 아닙니다.")
-                    except Exception as e:
-                        st.error(f"복원 실패: {e}")
     # -------------------------------------------------------------
     # 1) 노트목록 및 편집 버튼 영역 (상단 여백을 주어 잘림 방지)
     # -------------------------------------------------------------
