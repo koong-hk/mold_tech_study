@@ -37,8 +37,14 @@ def get_gspread_client():
             "https://www.googleapis.com/auth/spreadsheets",
             "https://www.googleapis.com/auth/drive"
         ]
+        
+        # Secrets 정보 복사 후 private_key 이스케이프 문자를 줄바꿈으로 강제 교체
+        creds_dict = dict(st.secrets["gcp_service_account"])
+        if "private_key" in creds_dict:
+            creds_dict["private_key"] = creds_dict["private_key"].replace("\\n", "\n")
+
         credentials = Credentials.from_service_account_info(
-            st.secrets["gcp_service_account"],
+            creds_dict,
             scopes=scope
         )
         return gspread.authorize(credentials)
