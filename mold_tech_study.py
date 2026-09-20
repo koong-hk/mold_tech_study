@@ -55,6 +55,79 @@ def get_kst_today():
     kst = timezone(timedelta(hours=9))
     return datetime.now(kst).date()
 
+def format_to_markdown(raw_text: str) -> str:
+    """
+    일반 텍스트로 작성된 노트 내용을 깔끔한 마크다운(Markdown) 형식으로 자동 변환합니다.
+    """
+    lines = raw_text.splitlines()
+    formatted_lines = []
+    in_table = False
+    
+    for line in lines:
+        stripped = line.strip()
+        
+        # 빈 줄 처리
+        if not stripped:
+            formatted_lines.append("")
+            in_table = False
+            continue
+            
+        # 1. 메인 헤더 처리 (예: 📝 모범 답안: ...)
+        if stripped.startswith("📝") or "모범 답안" in stripped:
+            formatted_lines.append(f"# {stripped}\n")
+            continue
+
+        # 2. 대목차 번호 처리 (예: 1. Sink Mark ..., 2. Jetting ...)
+        if re.match(r'^\d+\.\s+', stripped):
+            formatted_lines.append(f"\n## {stripped}\n")
+            continue
+
+        # 3. 주요 소항목 키워드 강조 (정의, 발생 원인, 특징, 대책 등)
+        if any(stripped.startswith(k) for k in ["정의:", "발생 원인", "특징", "대책"]):
+            # 정의: ... 형태 처리
+            if stripped.startswith("정의:"):
+                formatted_lines.append(f"**정의:** {stripped[3:].strip()}")
+            else:
+                formatted_lines.append(f"\n### 📌 {stripped}")
+            continue
+
+        # 4. 표(Table) 시작 및 구분선 자동 삽입 (구분Sink MarkJetting 등 붙어있는 텍스트 처리)
+        if stripped.startswith("구분"):
+            # '구분'으로 시작하고 탭이나 공백으로 구분된 경우 마크다운 표 구조로 생성
+            cols = [c.strip() for c in re.split(r'\t+|\s{2,}', stripped) if c.strip()]
+            if len(cols) >= 3:
+                header = "| " + " | ".join(cols) + " |"
+                separator = "| " + " | ".join(["---"] * len(cols)) + " |"
+                formatted_lines.append("\n" + header)
+                formatted_lines.append(separator)
+                in_table = True
+                continue
+
+        # 5. 표 데이터 행 처리
+        if in_table and any(k in stripped for k in ["발생 위치", "원인", "형상 특징", "대책"]):
+            cols = [c.strip() for c in re.split(r'\t+|\s{2,}', stripped) if c.strip()]
+            if len(cols) >= 2:
+                row = "| " + " | ".join(cols) + " |"
+                formatted_lines.append(row)
+                continue
+
+        # 6. 결론 강조 (✅ 결론 ...)
+        if "결론" in stripped or stripped.startswith("✅"):
+            formatted_lines.append(f"\n> ### {stripped}")
+            continue
+
+        # 7. 인사말/하단 안내 문구 구분선 추가
+        if "님," in stripped or "다음 단계로는" in stripped:
+            formatted_lines.append(f"\n---\n*{stripped}*")
+            continue
+
+        # 기본 일반 텍스트 / 불릿 포인트 처리
+        formatted_lines.append(f"- {stripped}" if not stripped.startswith("-") and not in_table else stripped)
+
+    return "\n".join(formatted_lines)
+
+
+
 def load_notes():
     """학습노트 데이터 로드 (Google Sheets 우선 -> 로컬 파일 폴백)"""
     try:
@@ -1171,6 +1244,9 @@ elif st.session_state.main_mode == "note":
                         if not new_title.strip():
                             st.error("노트 제목을 입력해주세요.")
                         else:
+                            # 1. 입력된 내용을 마크다운 형식으로 자동 변환
+                            formatted_content = format_to_markdown(new_content)
+                                
                             links_list = [line.strip() for line in new_links_raw.split('\n') if line.strip()]
                             imgs_list = []
                             if uploaded_imgs:
