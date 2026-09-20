@@ -11,12 +11,12 @@ import gspread
 from google.oauth2.service_account import Credentials
 
 # -----------------------------------------------------------------------------
-# 1. 페이지 설정 (반드시 모든 Streamlit 명령어 중 최상단에 위치해야 함)
+# 1. 페이지 설정
 # -----------------------------------------------------------------------------
 st.set_page_config(page_title="금형기술사 학습 시스템", layout="wide")
 
 # -----------------------------------------------------------------------------
-# 2. 파일 경로 및 절대경로 설정 (로컬 백업용 폴백)
+# 2. 파일 경로 및 절대경로 설정
 # -----------------------------------------------------------------------------
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 NOTES_FILE = os.path.join(BASE_DIR, "notes.json")
@@ -31,14 +31,12 @@ if not os.path.exists(IMAGE_DIR):
 # -----------------------------------------------------------------------------
 @st.cache_resource
 def get_gspread_client():
-    """Streamlit Secrets 인증으로 gspread 클라이언트 생성"""
+    """Streamlit Secrets 인증으로 gspread 클라이언트 생성 (private_key \\n 자동 보정 포함)"""
     try:
         scope = [
             "https://www.googleapis.com/auth/spreadsheets",
             "https://www.googleapis.com/auth/drive"
         ]
-        
-        # Secrets 정보 복사 후 private_key 이스케이프 문자를 줄바꿈으로 강제 교체
         creds_dict = dict(st.secrets["gcp_service_account"])
         if "private_key" in creds_dict:
             creds_dict["private_key"] = creds_dict["private_key"].replace("\\n", "\n")
@@ -71,7 +69,6 @@ def load_notes():
     except Exception as e:
         st.warning(f"구글 시트 노트 로드 실패, 로컬 파일로 시도합니다: {e}")
 
-    # 구글 시트 연결 실패 시 로컬 파일 로드
     if os.path.exists(NOTES_FILE):
         try:
             with open(NOTES_FILE, "r", encoding="utf-8") as f:
@@ -82,45 +79,39 @@ def load_notes():
     return []
 
 def save_notes(notes):
-    """학습노트 데이터 저장 (Google Sheets + 로컬 파일 로컬 백업)"""
-    json_str = json.dump_string(notes) if hasattr(json, 'dump_string') else json.dumps(notes, ensure_ascii=False, indent=2)
-    
-    # 1. Google Sheets 저장
+    """학습노트 데이터 저장 (Google Sheets + 로컬 백업)"""
+    json_str = json.dumps(notes, ensure_ascii=False)
     sheet_saved = False
     try:
         gc = get_gspread_client()
         if gc and "sheets" in st.secrets:
             sheet_name = st.secrets["sheets"]["notes_sheet"]
             sh = gc.open(sheet_name).sheet1
-            sh.update_acell("A1", json.dumps(notes, ensure_ascii=False))
+            sh.update_acell("A1", json_str)
             sheet_saved = True
     except Exception as e:
         st.error(f"구글 시트 노트 저장 오류: {e}")
 
-    # 2. 로컬 백업 저장
     try:
         with open(NOTES_FILE, "w", encoding="utf-8") as f:
-            f.write(json_str)
+            f.write(json.dumps(notes, ensure_ascii=False, indent=2))
     except Exception:
         pass
 
     return sheet_saved
 
 def load_user_data():
-    """기출문제 학습 데이터 로드 (행 단위 로드)"""
+    """기출문제 학습 데이터 로드 (A열: 문제명, B열: JSON 파티셔닝 구조로 행 단위 분할 로드)"""
     try:
         gc = get_gspread_client()
         if gc and "sheets" in st.secrets:
             sheet_name = st.secrets["sheets"]["study_data_sheet"]
             sh = gc.open(sheet_name).sheet1
-            
-            # 전체 행 데이터(A열: 문제명, B열: JSON 데이터) 가져오기
             rows = sh.get_all_values()
             data = {}
             for row in rows:
                 if len(row) >= 2 and row[0] and row[1]:
                     try:
-                        # 특별 키 (예: _d_day_target) 처리
                         if row[0] == "_d_day_target":
                             data["_d_day_target"] = row[1]
                         else:
@@ -131,7 +122,6 @@ def load_user_data():
     except Exception as e:
         st.warning(f"구글 시트 기출데이터 로드 실패, 로컬 파일로 시도합니다: {e}")
 
-    # 구글 시트 연결 실패 시 로컬 파일 로드
     if os.path.exists(USER_DATA_FILE):
         try:
             with open(USER_DATA_FILE, "r", encoding="utf-8") as f:
@@ -142,15 +132,13 @@ def load_user_data():
     return {}
 
 def save_user_data(data):
-    """기출문제 학습 데이터 저장 (행 단위 분할 저장)"""
-    # 1. 로컬 파일 백업 저장
+    """기출문제 학습 데이터 저장 (A열: 문제명, B열: JSON 파티셔닝 구조로 행 단위 분할 저장)"""
     try:
         with open(USER_DATA_FILE, "w", encoding="utf-8") as f:
             f.write(json.dumps(data, ensure_ascii=False, indent=2))
     except Exception:
         pass
 
-    # 2. Google Sheets 저장 (행 단위 배치 업데이트)
     try:
         gc = get_gspread_client()
         if gc and "sheets" in st.secrets:
@@ -162,11 +150,9 @@ def save_user_data(data):
                 if q_key == "_d_day_target":
                     rows_to_update.append([q_key, str(q_val)])
                 else:
-                    # 문제 데이터를 JSON 텍스트로 전환하여 B열에 저장
                     json_val = json.dumps(q_val, ensure_ascii=False)
                     rows_to_update.append([q_key, json_val])
             
-            # 기존 시트 초기화 후 행 단위로 일괄 입력
             sh.clear()
             if rows_to_update:
                 sh.update(f"A1:B{len(rows_to_update)}", rows_to_update)
@@ -278,7 +264,7 @@ if "current_q" not in st.session_state:
     st.session_state.current_q = None
 
 # -----------------------------------------------------------------------------
-# 6. 정제된 CSS 스타일 적용
+# 6. 정제된 CSS 스타일 적용 (기출문제 + 학습노트 동일 들여쓰기 통합 적용)
 # -----------------------------------------------------------------------------
 st.markdown("""
     <style>
@@ -374,43 +360,49 @@ st.markdown("""
             line-height: 1.1 !important;
         }
 
-        div[data-testid="stTabPanel"] h1,
-        div[data-testid="stTabPanel"] h2,
-        div[data-testid="stTabPanel"] h3,
-        div[data-testid="stTabPanel"] h4,
-        div[data-testid="stTabPanel"] h5,
-        div[data-testid="stTabPanel"] h6 {
+        /* =================================================================== */
+        /* [수정] 우측 영역 (기출문제 탭 & 학습노트 영역 전체 들여쓰기 공통 적용) */
+        /* =================================================================== */
+        div[data-testid="stTabPanel"] h1, div[data-testid="stTabPanel"] h2,
+        div[data-testid="stTabPanel"] h3, div[data-testid="stTabPanel"] h4,
+        div[data-testid="stTabPanel"] h5, div[data-testid="stTabPanel"] h6,
+        .note-detail-area h1, .note-detail-area h2, .note-detail-area h3,
+        .note-detail-area h4, .note-detail-area h5, .note-detail-area h6 {
             margin-left: 0px !important;
             margin-bottom: 0.5rem !important;
         }
 
-        div[data-testid="stTabPanel"] div[data-testid="stMarkdownContainer"] > p {
+        div[data-testid="stTabPanel"] div[data-testid="stMarkdownContainer"] > p,
+        .note-detail-area div[data-testid="stMarkdownContainer"] > p {
             margin-left: 1.2rem !important;
             word-break: keep-all !important;
             overflow-wrap: break-word !important;
             line-height: 1.65 !important;
         }
 
-        div[data-testid="stTabPanel"] ol,
-        div[data-testid="stTabPanel"] ul {
+        div[data-testid="stTabPanel"] ol, div[data-testid="stTabPanel"] ul,
+        .note-detail-area ol, .note-detail-area ul {
             margin-left: 1.2rem !important;
             padding-left: 1.2rem !important;
             margin-bottom: 0.8rem !important;
         }
 
-        div[data-testid="stTabPanel"] li {
+        div[data-testid="stTabPanel"] li,
+        .note-detail-area li {
             margin-bottom: 0.4rem !important;
             line-height: 1.65 !important;
             word-break: keep-all !important;
             overflow-wrap: break-word !important;
         }
 
-        div[data-testid="stTabPanel"] li > p {
+        div[data-testid="stTabPanel"] li > p,
+        .note-detail-area li > p {
             margin-left: 0px !important;
             display: inline !important;
         }
 
-        div[data-testid="stTabPanel"] textarea {
+        div[data-testid="stTabPanel"] textarea,
+        .note-detail-area textarea {
             padding-left: 1.2rem !important;
             line-height: 1.65 !important;
             word-break: keep-all !important;
@@ -456,11 +448,13 @@ st.markdown("""
 @st.cache_data
 def load_excel_data(uploaded_file):
     if uploaded_file is not None:
-        df = pd.read_excel(uploaded_file)
+        excel_file = pd.read_excel(uploaded_file, sheet_name=None)
+        df = pd.concat(excel_file.values(), ignore_index=True)
     else:
         default_file = "금형기술사_기출문제 통합.xlsx"
         if os.path.exists(default_file):
-            df = pd.read_excel(default_file)
+            excel_file = pd.read_excel(default_file, sheet_name=None)
+            df = pd.concat(excel_file.values(), ignore_index=True)
         else:
             df = pd.DataFrame({
                 '회차': [139, 139, 138, 138, 137],
@@ -994,6 +988,7 @@ elif st.session_state.main_mode == "note":
     if "note_sub_mode" not in st.session_state:
         st.session_state.note_sub_mode = "list"
 
+    # [수정] 학습노트 상세 화면 들여쓰기 보정 (note-detail-area 클래스 부여)
     if st.session_state.note_sub_mode == "detail" and st.session_state.selected_note_id:
         note = next((n for n in st.session_state.notes if n["id"] == st.session_state.selected_note_id), None)
         
@@ -1011,6 +1006,8 @@ elif st.session_state.main_mode == "note":
 
             st.markdown("---")
 
+            # 본문 들여쓰기 및 서식 정렬을 위해 div 컨테이너로 감싸서 렌더링
+            st.markdown("<div class='note-detail-area'>", unsafe_allow_html=True)
             if note.get("content"):
                 st.markdown(format_readable_text(note["content"]))
             else:
@@ -1041,6 +1038,7 @@ elif st.session_state.main_mode == "note":
                 st.markdown("**🔗 관련 링크**")
                 for link in links:
                     st.markdown(f"- [{link}]({link})")
+            st.markdown("</div>", unsafe_allow_html=True)
 
         else:
             st.error("해당 노트를 찾을 수 없습니다.")
