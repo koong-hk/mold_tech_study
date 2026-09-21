@@ -9,8 +9,9 @@ import pandas as pd
 import streamlit as st
 import gspread
 from google.oauth2.service_account import Credentials
+from zoneinfo import ZoneInfo
 
-
+KST = ZoneInfo('Asia/Seoul')
 # -----------------------------------------------------------------------------
 # 1. 페이지 설정
 # -----------------------------------------------------------------------------
@@ -26,9 +27,6 @@ IMAGE_DIR = os.path.join(BASE_DIR, "saved_images")
 
 if not os.path.exists(IMAGE_DIR):
     os.makedirs(IMAGE_DIR, exist_ok=True)
-
-
-KST = timezone(timedelta(hours=9))
 
 
 # ==========================================
