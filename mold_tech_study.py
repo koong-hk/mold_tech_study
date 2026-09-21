@@ -29,12 +29,19 @@ if not os.path.exists(IMAGE_DIR):
     os.makedirs(IMAGE_DIR, exist_ok=True)
 
 
-# 한국 시간대 정의
 KST = pytz.timezone('Asia/Seoul')
+now_kst = datetime.now(KST)
 
-# 기존 코드: datetime.now()
-# 변경 코드: datetime.now(KST)
-today_kst = datetime.now(KST).date()
+# 사이드바 날짜 선택기
+with st.sidebar:
+    selected_date = st.date_input(
+        "날짜 선택",
+        value=now_kst.date()  # KST 기준 오늘 날짜 설정
+    )
+    
+    # 선택된 날짜의 요일 확인 (월요일 = 0, 일요일 = 6)
+    weekdays = ["월요일", "화요일", "수요일", "목요일", "금요일", "토요일", "일요일"]
+    st.write(f"오늘 요일: **{weekdays[selected_date.weekday()]}**")
 # ==========================================
 # 헬퍼 함수: 마크다운 자동 변환
 # ==========================================
