@@ -5,6 +5,7 @@ import json
 import os
 import re
 import time
+import pytz
 import pandas as pd
 import streamlit as st
 import gspread
@@ -27,6 +28,13 @@ IMAGE_DIR = os.path.join(BASE_DIR, "saved_images")
 if not os.path.exists(IMAGE_DIR):
     os.makedirs(IMAGE_DIR, exist_ok=True)
 
+
+# 한국 시간대 정의
+KST = pytz.timezone('Asia/Seoul')
+
+# 기존 코드: datetime.now()
+# 변경 코드: datetime.now(KST)
+today_kst = datetime.now(KST).date()
 # ==========================================
 # 헬퍼 함수: 마크다운 자동 변환
 # ==========================================
