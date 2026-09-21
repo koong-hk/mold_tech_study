@@ -244,7 +244,10 @@ def render_mini_calendar():
     """커스텀 미니 달력 HTML 생성 함수"""
     today = get_kst_today()
     year, month, today_day = today.year, today.month, today.day
-    cal = calendar.monthcalendar(year, month)
+    
+    # 1. 달력의 시작 요일을 '일요일'로 설정 (기본값: 월요일)
+    cal_obj = calendar.Calendar(firstweekday=calendar.SUNDAY)
+    cal = cal_obj.monthdayscalendar(year, month)
     
     html = f"""
     <div style="background-color: #121212; border-radius: 8px; padding: 10px 4px; width: 100%; box-sizing: border-box; margin-bottom: 8px; overflow: hidden;">
