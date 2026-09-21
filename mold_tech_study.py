@@ -31,72 +31,69 @@ if not os.path.exists(IMAGE_DIR):
 # 헬퍼 함수: 마크다운 자동 변환
 # ==========================================
 
-def format_to_markdown(raw_text: str) -> str:
+import re
+
+def format_to_markdown(text: str) -> str:
     """
-    한 줄로 뭉쳐진 텍스트도 구조를 분석하여 깔끔한 마크다운 형식으로 자동 변환합니다.
+    텍스트를 마크다운으로 깔끔하게 정돈하는 함수.
+    이미 마크다운 기호(###, -, *, | 등)가 붙어있는 경우 중복 처리되지 않도록 보호합니다.
     """
-    if not raw_text:
-        return raw_text
+    if not text:
+        return ""
 
-    text = raw_text
+    # 1. 윈도우/맥 줄바꿈 정규화
+    text = text.replace('\r\n', '\n').replace('\r', '\n')
 
-    # 1. 뭉쳐진 문장 간 줄바꿈 강제 복원 (키워드 전후 줄바꿈 생성)
-    # 제목 및 목차 패턴
-    text = re.sub(r'(\d+\.\s+[A-Za-z0-9가-힣\s\(\)]+)', r'\n\n## \1\n', text)
-    
-    # 주요 키워드 패턴
-    keywords = ["정의:", "발생 원인", "특징", "대책", "구분 Sink Mark", "구분", "✅ 결론"]
-    for kw in keywords:
-        text = text.replace(kw, f"\n\n### 📌 {kw}\n" if kw not in ["정의:", "구분", "✅ 결론"] else f"\n\n{kw}")
+    # 2. 이미 중복으로 생성된 잘못된 마크다운 패턴 교정 (복원 로직)
+    text = re.sub(r'(?:\s*-\s*){2,}', '- ', text)                 # - - - -> -
+    text = re.sub(r'(?:###\s*){2,}', '### ', text)              # ### ### -> ###
+    text = re.sub(r'(?:##\s*){2,}', '## ', text)                # ## ## -> ##
+    text = re.sub(r'(?:📌\s*){2,}', '📌 ', text)                # 📌 📌 -> 📌
+    text = re.sub(r'(?:###\s*📌\s*){2,}', '### 📌 ', text)      # ### 📌 ### 📌 -> ### 📌
 
-    # 2. 줄 단위 분석 및 마크다운 처리
-    lines = text.splitlines()
-    formatted_lines = []
-    
+    # 3. 라인별 다듬기
+    lines = text.split('\n')
+    cleaned_lines = []
+
     for line in lines:
         stripped = line.strip()
+        
+        # 빈 줄은 그대로 유지
         if not stripped:
+            cleaned_lines.append("")
             continue
 
-        # 메인 헤더
-        if stripped.startswith("📝") or "모범 답안" in stripped:
-            formatted_lines.append(f"# {stripped}\n")
+        # 구분선(---) 또는 표(|) 형태는 건드리지 않음
+        if stripped.startswith("---") or stripped.startswith("|"):
+            cleaned_lines.append(stripped)
             continue
 
-        # 정의
-        if stripped.startswith("정의:"):
-            formatted_lines.append(f"**정의:** {stripped.replace('정의:', '').strip()}\n")
+        # 헤더(###, ## 등)나 리스트(-, *), 번호목록(1.)이 이미 적용된 경우 유지
+        if re.match(r'^(#+|\*|-|\+|\d+\.)\s', stripped):
+            cleaned_lines.append(stripped)
             continue
 
-        # 결론
-        if "결론" in stripped or stripped.startswith("✅"):
-            formatted_lines.append(f"\n> ### {stripped}\n")
+        # 소제목 패턴 자동 변환 (숫자. 제목 형태)
+        # 예: "1. 열가소성 수지" -> "### 1. 열가소성 수지"
+        if re.match(r'^\d+\.\s+[^\n]+', stripped) and len(stripped) < 40:
+            cleaned_lines.append(f"### {stripped}")
             continue
 
-        # 표(Table) 영역 처리
-        if "구분" in stripped and ("Sink Mark" in stripped or "Jetting" in stripped):
-            table_md = (
-                "\n| 구분 | Sink Mark | Jetting |\n"
-                "| --- | --- | --- |\n"
-                "| **발생 위치** | 두꺼운 부위, 리브·보스 주변 | 게이트 인근, 유동 시작부 |\n"
-                "| **원인** | 냉각 지연, 보압 부족 | 과도한 사출 속도, 게이트 설계 불량 |\n"
-                "| **형상 특징** | 표면 함몰(凹) | 뱀 모양 줄무늬, 흐름 흔적 |\n"
-                "| **대책** | 보압 강화, 두께 균일화 | 속도 제어, 게이트 설계 개선 |\n"
-            )
-            formatted_lines.append(table_md)
-            continue
+        # 핵심 키워드 콜론 패턴 (예: "특징 : 내용" -> "- **특징:** 내용")
+        if ":" in stripped and not stripped.startswith("http"):
+            parts = stripped.split(":", 1)
+            # 앞부분이 비교적 짧은 키워드인 경우만 적용
+            if len(parts[0].strip()) < 20 and not parts[0].strip().startswith("-"):
+                cleaned_lines.append(f"- **{parts[0].strip()}:** {parts[1].strip()}")
+                continue
 
-        # 표 데이터 문장이 이미 표로 들어간 경우 스킵
-        if any(k in stripped for k in ["발생 위치 두꺼운", "원인 냉각", "형상 특징 표면", "대책 보압"]):
-            continue
+        cleaned_lines.append(stripped)
 
-        # 일반 문장 / 항목
-        if stripped.startswith("##") or stripped.startswith("###") or stripped.startswith("#"):
-            formatted_lines.append(stripped)
-        else:
-            formatted_lines.append(f"- {stripped}")
+    # 연속된 빈 줄을 최대 2개로 제한하여 가독성 확보
+    result = "\n".join(cleaned_lines)
+    result = re.sub(r'\n{3,}', '\n\n', result)
 
-    return "\n".join(formatted_lines)
+    return result.strip()
     
 # -----------------------------------------------------------------------------
 # 3. Google Sheets 연동 헬퍼 및 데이터 입출력 함수
