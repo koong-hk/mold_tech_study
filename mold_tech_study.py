@@ -155,16 +155,36 @@ def get_kst_today():
     return datetime.now(kst).date()
 
 def load_notes():
-    """학습노트 데이터 로드 (Google Sheets 우선 -> 로컬 파일 폴백)"""
+    """학습노트 데이터 로드 (Google Sheets 행 단위 분할 로드 -> 로컬 파일 폴백)"""
     try:
         gc = get_gspread_client()
         if gc and "sheets" in st.secrets:
             sheet_name = st.secrets["sheets"]["notes_sheet"]
             sh = gc.open(sheet_name).sheet1
-            cell_value = sh.acell("A1").value
-            if cell_value:
-                data = json.loads(cell_value)
-                return data if isinstance(data, list) else []
+            rows = sh.get_all_values()
+            
+            notes = []
+            for row in rows:
+                # 첫 번째 셀에 전체 JSON(레거시 방식)이 들어있는 경우 호환성 유지
+                if len(row) == 1 and row[0]:
+                    try:
+                        data = json.loads(row[0])
+                        if isinstance(data, list):
+                            return data
+                    except Exception:
+                        pass
+                
+                # 행 단위로 분할 저장된 경우 (A열: ID 또는 구분자, B열: 개별 노트 JSON)
+                if len(row) >= 2 and row[1]:
+                    try:
+                        note_item = json.loads(row[1])
+                        if isinstance(note_item, dict):
+                            notes.append(note_item)
+                    except Exception:
+                        pass
+            
+            if notes or rows == []:  # 빈 시트가 아닌 경우 로드된 노트 반환
+                return notes
     except Exception as e:
         st.warning(f"구글 시트 노트 로드 실패, 로컬 파일로 시도합니다: {e}")
 
@@ -178,24 +198,34 @@ def load_notes():
     return []
 
 def save_notes(notes):
-    """학습노트 데이터 저장 (Google Sheets + 로컬 백업)"""
-    json_str = json.dumps(notes, ensure_ascii=False)
+    """학습노트 데이터 저장 (Google Sheets 행별 분할 저장 + 로컬 백업)"""
+    # 1. 로컬 파일 백업 먼저 수행
+    try:
+        with open(NOTES_FILE, "w", encoding="utf-8") as f:
+            f.write(json.dumps(notes, ensure_ascii=False, indent=2))
+    except Exception:
+        pass
+
     sheet_saved = False
     try:
         gc = get_gspread_client()
         if gc and "sheets" in st.secrets:
             sheet_name = st.secrets["sheets"]["notes_sheet"]
             sh = gc.open(sheet_name).sheet1
-            sh.update_acell("A1", json_str)
+            
+            # 각 노트를 행별로 분할하여 준비 (A열: 노트 ID, B열: 노트 JSON 데이터)
+            rows_to_update = []
+            for note in notes:
+                note_id = str(note.get("id", ""))
+                json_val = json.dumps(note, ensure_ascii=False)
+                rows_to_update.append([note_id, json_val])
+            
+            sh.clear()
+            if rows_to_update:
+                sh.update(f"A1:B{len(rows_to_update)}", rows_to_update)
             sheet_saved = True
     except Exception as e:
         st.error(f"구글 시트 노트 저장 오류: {e}")
-
-    try:
-        with open(NOTES_FILE, "w", encoding="utf-8") as f:
-            f.write(json.dumps(notes, ensure_ascii=False, indent=2))
-    except Exception:
-        pass
 
     return sheet_saved
 
