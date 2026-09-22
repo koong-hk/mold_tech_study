@@ -35,6 +35,7 @@ if not os.path.exists(IMAGE_DIR):
 def format_to_markdown(text: str) -> str:
     """
     텍스트를 마크다운으로 깔끔하게 정돈하는 함수.
+    반복 실행(저장)해도 기호(*, - 등)가 증식하지 않도록 보호합니다.
     """
     if not text:
         return ""
@@ -42,18 +43,18 @@ def format_to_markdown(text: str) -> str:
     # 1. 윈도우/맥 줄바꿈 정규화
     text = text.replace('\r\n', '\n').replace('\r', '\n')
 
-    # 2. [수정됨] 구분선(---)은 건드리지 않고, 띄어쓰기가 포함된 잘못된 불릿(- - -)만 교정
-    # 기존: re.sub(r'(?:\s*-\s*){2,}', '- ', text) -> 이 부분을 수정
-    text = re.sub(r'-\s+-\s+', '- ', text)  # 예: "- - " 형태의 오타 교정
-    
-    text = re.sub(r'(?:###\s*){2,}', '### ', text)               # ### ### -> ###
-    text = re.sub(r'(?:##\s*){2,}', '## ', text)                 # ## ## -> ##
-    text = re.sub(r'(?:📌\s*){2,}', '📌 ', text)                 # 📌 📌 -> 📌
-    text = re.sub(r'(?:###\s*📌\s*){2,}', '### 📌 ', text)       # ### 📌 ### 📌 -> ### 📌
+    # 2. 잘못된 중복 기호 교정
+    text = re.sub(r'-\s+-\s+', '- ', text)
+    text = re.sub(r'(?:###\s*){2,}', '### ', text)
+    text = re.sub(r'(?:##\s*){2,}', '## ', text)
+    text = re.sub(r'(?:📌\s*){2,}', '📌 ', text)
+    text = re.sub(r'(?:###\s*📌\s*){2,}', '### 📌 ', text)
 
-    # 3. 라인별 다듬기
     lines = text.split('\n')
     cleaned_lines = []
+    
+    # 직전 줄이 소제목이었는지 추적하는 플래그
+    is_after_header = False
 
     for line in lines:
         stripped = line.strip()
@@ -61,33 +62,50 @@ def format_to_markdown(text: str) -> str:
         # 빈 줄은 그대로 유지
         if not stripped:
             cleaned_lines.append("")
+            is_after_header = False
             continue
 
-        # 구분선(--- 또는 *** 등) 형태는 건드리지 않음
+        # 구분선(---, ===) 또는 표(|) 형태는 건드리지 않음
         if stripped.startswith("---") or stripped.startswith("===") or stripped.startswith("|"):
             cleaned_lines.append(stripped)
+            is_after_header = False
             continue
 
         # 헤더(###, ## 등)나 리스트(-, *), 번호목록(1.)이 이미 적용된 경우 유지
         if re.match(r'^(#+|\*|-|\+|\d+\.)\s', stripped):
+            if stripped.startswith("#"):
+                is_after_header = True
+            else:
+                is_after_header = False
+            
+            # HTML 공백(&nbsp;)이 앞에 붙어 있는 리스트/헤더 형태도 그대로 통과시키기 위해 stripped 유지
             cleaned_lines.append(stripped)
             continue
 
-        # 소제목 패턴 자동 변환 (숫자. 제목 형태)
+        # 소제목 자동 변환 패턴 (예: "1. 제목")
         if re.match(r'^\d+\.\s+[^\n]+', stripped) and len(stripped) < 40:
             cleaned_lines.append(f"### {stripped}")
+            is_after_header = True
             continue
 
-        # 핵심 키워드 콜론 패턴 (예: "특징 : 내용" -> "- **특징:** 내용")
-        if ":" in stripped and not stripped.startswith("http"):
+        # [들여쓰기 적용] 직전 줄이 소제목이었고, 일반 텍스트인 경우 들여쓰기 추가
+        if is_after_header:
+            cleaned_lines.append(f"&nbsp;&nbsp;&nbsp;&nbsp;{stripped}")
+            is_after_header = False
+            continue
+
+        # [핵심 수정] 키-값 패턴 변환 (이미 리스트(-, *)나 마크다운 기호로 시작하는 줄은 변환 제외)
+        if ":" in stripped and not stripped.startswith("http") and not stripped.startswith(("-", "*", "###", "##")):
             parts = stripped.split(":", 1)
             if len(parts[0].strip()) < 20 and not parts[0].strip().startswith("-"):
                 cleaned_lines.append(f"- **{parts[0].strip()}:** {parts[1].strip()}")
+                is_after_header = False
                 continue
 
         cleaned_lines.append(stripped)
+        is_after_header = False
 
-    # 연속된 빈 줄을 최대 2개로 제한하여 가독성 확보
+    # 연속된 빈 줄을 최대 2개로 제한
     result = "\n".join(cleaned_lines)
     result = re.sub(r'\n{3,}', '\n\n', result)
 
