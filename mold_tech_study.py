@@ -35,7 +35,7 @@ if not os.path.exists(IMAGE_DIR):
 def format_to_markdown(text: str) -> str:
     """
     텍스트를 마크다운으로 깔끔하게 정돈하는 함수.
-    반복 실행(저장)해도 기호(*, - 등)가 증식하지 않도록 보호합니다.
+    중복 기호 증식을 막고, 인용구(>)가 섞인 텍스트를 깔끔하게 정돈합니다.
     """
     if not text:
         return ""
@@ -43,7 +43,7 @@ def format_to_markdown(text: str) -> str:
     # 1. 윈도우/맥 줄바꿈 정규화
     text = text.replace('\r\n', '\n').replace('\r', '\n')
 
-    # 2. 잘못된 중복 기호 교정
+    # 2. 잘못된 중복 기호 및 불필요한 인용구(>) 정리
     text = re.sub(r'-\s+-\s+', '- ', text)
     text = re.sub(r'(?:###\s*){2,}', '### ', text)
     text = re.sub(r'(?:##\s*){2,}', '## ', text)
@@ -53,11 +53,12 @@ def format_to_markdown(text: str) -> str:
     lines = text.split('\n')
     cleaned_lines = []
     
-    # 직전 줄이 소제목이었는지 추적하는 플래그
     is_after_header = False
 
     for line in lines:
-        stripped = line.strip()
+        # 줄 시작 부근의 인용구 기호(>)와 공백을 깔끔하게 제거하거나 정돈
+        line_clean_gt = re.sub(r'^\s*>\s*', '', line)
+        stripped = line_clean_gt.strip()
         
         # 빈 줄은 그대로 유지
         if not stripped:
@@ -77,8 +78,6 @@ def format_to_markdown(text: str) -> str:
                 is_after_header = True
             else:
                 is_after_header = False
-            
-            # HTML 공백(&nbsp;)이 앞에 붙어 있는 리스트/헤더 형태도 그대로 통과시키기 위해 stripped 유지
             cleaned_lines.append(stripped)
             continue
 
@@ -88,13 +87,28 @@ def format_to_markdown(text: str) -> str:
             is_after_header = True
             continue
 
-        # [들여쓰기 적용] 직전 줄이 소제목이었고, 일반 텍스트인 경우 들여쓰기 추가
+        # [특수 처리] "주요 특징:" 같은 타이틀 줄 처리 (콜론으로 끝나거나 대분류인 경우)
+        if stripped.endswith(":") and len(stripped) < 25:
+            cleaned_lines.append(f"**{stripped}**")
+            is_after_header = True # 바로 아래 줄을 내용(들여쓰기 및 리스트)으로 유도
+            continue
+
+        # 들여쓰기 적용 (소제목 바로 아래 줄인 경우)
         if is_after_header:
-            cleaned_lines.append(f"&nbsp;&nbsp;&nbsp;&nbsp;{stripped}")
+            # 내용 안에 "키: 설명" 형태가 포함되어 있다면 리스트형태로 자동 변환 (- **키:** 설명)
+            if ":" in stripped and not stripped.startswith("-"):
+                parts = stripped.split(":", 1)
+                if len(parts[0].strip()) < 20:
+                    cleaned_lines.append(f"&nbsp;&nbsp;&nbsp;&nbsp;- **{parts[0].strip()}:** {parts[1].strip()}")
+                else:
+                    cleaned_lines.append(f"&nbsp;&nbsp;&nbsp;&nbsp;{stripped}")
+            else:
+                cleaned_lines.append(f"&nbsp;&nbsp;&nbsp;&nbsp;{stripped}")
+            
             is_after_header = False
             continue
 
-        # [핵심 수정] 키-값 패턴 변환 (이미 리스트(-, *)나 마크다운 기호로 시작하는 줄은 변환 제외)
+        # 일반 키-값 패턴 변환 (이미 리스트나 마크다운 기호가 없는 경우만)
         if ":" in stripped and not stripped.startswith("http") and not stripped.startswith(("-", "*", "###", "##")):
             parts = stripped.split(":", 1)
             if len(parts[0].strip()) < 20 and not parts[0].strip().startswith("-"):
