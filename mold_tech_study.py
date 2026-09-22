@@ -198,8 +198,8 @@ def load_notes():
     return []
 
 def save_notes(notes):
-    """학습노트 데이터 저장 (Google Sheets 행별 분할 저장 + 로컬 백업)"""
-    # 1. 로컬 파일 백업 먼저 수행
+    """학습노트 데이터 저장 (구글 시트 셀 용량 초과 방지 및 로컬 백업)"""
+    # 1. 로컬 파일 백업은 전체 데이터를 온전하게 저장
     try:
         with open(NOTES_FILE, "w", encoding="utf-8") as f:
             f.write(json.dumps(notes, ensure_ascii=False, indent=2))
@@ -213,11 +213,25 @@ def save_notes(notes):
             sheet_name = st.secrets["sheets"]["notes_sheet"]
             sh = gc.open(sheet_name).sheet1
             
-            # 각 노트를 행별로 분할하여 준비 (A열: 노트 ID, B열: 노트 JSON 데이터)
             rows_to_update = []
             for note in notes:
                 note_id = str(note.get("id", ""))
                 json_val = json.dumps(note, ensure_ascii=False)
+                
+                # [핵심 방어 코드] 개별 셀이 구글 시트 제한(50,000자)을 넘지 않도록 체크
+                if len(json_val) > 48000:
+                    # 너무 클 경우, 데이터 유실을 최소화하거나 에러 방지를 위해 강제로 잘라냄 
+                    # (예: 이미지 데이터 등이 너무 클 경우 경고를 남기거나 처리)
+                    note_copy = note.copy()
+                    # 만약 큰 데이터 필드가 있다면 줄이거나 대체할 수 있습니다.
+                    if "image" in note_copy:
+                        note_copy["image"] = "[이미지 데이터 용량 초과로 생략됨]"
+                    json_val = json.dumps(note_copy, ensure_ascii=False)
+                    
+                    # 그래도 48000자를 넘는다면 강제로 자름 (문자열 파손 방지용 최후 수단)
+                    if len(json_val) > 48000:
+                        json_val = json_val[:48000] + "...(내용 생략)"
+                
                 rows_to_update.append([note_id, json_val])
             
             sh.clear()
