@@ -32,12 +32,9 @@ if not os.path.exists(IMAGE_DIR):
 # 헬퍼 함수: 마크다운 자동 변환
 # ==========================================
 
-import re
-
 def format_to_markdown(text: str) -> str:
     """
     텍스트를 마크다운으로 깔끔하게 정돈하는 함수.
-    이미 마크다운 기호(###, -, *, | 등)가 붙어있는 경우 중복 처리되지 않도록 보호합니다.
     """
     if not text:
         return ""
@@ -45,12 +42,14 @@ def format_to_markdown(text: str) -> str:
     # 1. 윈도우/맥 줄바꿈 정규화
     text = text.replace('\r\n', '\n').replace('\r', '\n')
 
-    # 2. 이미 중복으로 생성된 잘못된 마크다운 패턴 교정 (복원 로직)
-    text = re.sub(r'(?:\s*-\s*){2,}', '- ', text)                 # - - - -> -
-    text = re.sub(r'(?:###\s*){2,}', '### ', text)              # ### ### -> ###
-    text = re.sub(r'(?:##\s*){2,}', '## ', text)                # ## ## -> ##
-    text = re.sub(r'(?:📌\s*){2,}', '📌 ', text)                # 📌 📌 -> 📌
-    text = re.sub(r'(?:###\s*📌\s*){2,}', '### 📌 ', text)      # ### 📌 ### 📌 -> ### 📌
+    # 2. [수정됨] 구분선(---)은 건드리지 않고, 띄어쓰기가 포함된 잘못된 불릿(- - -)만 교정
+    # 기존: re.sub(r'(?:\s*-\s*){2,}', '- ', text) -> 이 부분을 수정
+    text = re.sub(r'-\s+-\s+', '- ', text)  # 예: "- - " 형태의 오타 교정
+    
+    text = re.sub(r'(?:###\s*){2,}', '### ', text)               # ### ### -> ###
+    text = re.sub(r'(?:##\s*){2,}', '## ', text)                 # ## ## -> ##
+    text = re.sub(r'(?:📌\s*){2,}', '📌 ', text)                 # 📌 📌 -> 📌
+    text = re.sub(r'(?:###\s*📌\s*){2,}', '### 📌 ', text)       # ### 📌 ### 📌 -> ### 📌
 
     # 3. 라인별 다듬기
     lines = text.split('\n')
@@ -64,8 +63,8 @@ def format_to_markdown(text: str) -> str:
             cleaned_lines.append("")
             continue
 
-        # 구분선(---) 또는 표(|) 형태는 건드리지 않음
-        if stripped.startswith("---") or stripped.startswith("|"):
+        # 구분선(--- 또는 *** 등) 형태는 건드리지 않음
+        if stripped.startswith("---") or stripped.startswith("===") or stripped.startswith("|"):
             cleaned_lines.append(stripped)
             continue
 
@@ -75,7 +74,6 @@ def format_to_markdown(text: str) -> str:
             continue
 
         # 소제목 패턴 자동 변환 (숫자. 제목 형태)
-        # 예: "1. 열가소성 수지" -> "### 1. 열가소성 수지"
         if re.match(r'^\d+\.\s+[^\n]+', stripped) and len(stripped) < 40:
             cleaned_lines.append(f"### {stripped}")
             continue
@@ -83,7 +81,6 @@ def format_to_markdown(text: str) -> str:
         # 핵심 키워드 콜론 패턴 (예: "특징 : 내용" -> "- **특징:** 내용")
         if ":" in stripped and not stripped.startswith("http"):
             parts = stripped.split(":", 1)
-            # 앞부분이 비교적 짧은 키워드인 경우만 적용
             if len(parts[0].strip()) < 20 and not parts[0].strip().startswith("-"):
                 cleaned_lines.append(f"- **{parts[0].strip()}:** {parts[1].strip()}")
                 continue
