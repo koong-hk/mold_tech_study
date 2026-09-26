@@ -628,6 +628,14 @@ def load_excel_data(uploaded_file):
 # -----------------------------------------------------------------------------
 # 8. 사이드바 구성
 # -----------------------------------------------------------------------------
+
+# 숫자와 문자열이 섞여 있어도 TypeError 없이 정렬되도록 보정
+    def extract_number_key(x):
+        digits = re.sub(r'[^0-9]', '', str(x))
+        if digits:
+            return (0, int(digits))  # 숫자가 추출되면 우선순위 0, 정수값 비교
+        return (1, str(x))           # 숫자가 없으면 우선순위 1, 문자열 비교
+
 with st.sidebar:
     uploaded_file = st.file_uploader("📂 엑셀 파일 업로드", type=['xlsx', 'xls'])
     
@@ -667,11 +675,7 @@ with st.sidebar:
 
     # 회차 정렬: 내림차순(최신 회차 순서)
     # 정규표현식을 사용해 '회'나 소수점 등을 무시하고 순수 숫자만 추출하여 정렬
-    rounds = sorted(
-        list(df['회차'].unique()), 
-        key=lambda x: int(re.sub(r'[^0-9]', '', str(x))) if re.sub(r'[^0-9]', '', str(x)) else str(x), 
-        reverse=True
-    )
+    rounds = sorted(list(df['회차'].unique()), key=extract_number_key, reverse=True)
     unique_periods = sorted(list(df['교시'].unique()))    
     periods = [str(p) for p in unique_periods]
     categories = sorted(list(df['분류'].unique()))
