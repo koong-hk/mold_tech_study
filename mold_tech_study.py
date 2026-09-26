@@ -666,8 +666,13 @@ with st.sidebar:
     df['중요도(별)'] = df['문제'].apply(lambda x: "⭐" * st.session_state.user_data[x]['importance'])
 
     # 회차 정렬: 내림차순(최신 회차 순서)
-    rounds = sorted(list(df['회차'].unique()), key=lambda x: int(x) if str(x).isdigit() else x, reverse=True)
-    unique_periods = sorted(list(df['교시'].unique()))
+    # 정규표현식을 사용해 '회'나 소수점 등을 무시하고 순수 숫자만 추출하여 정렬
+    rounds = sorted(
+        list(df['회차'].unique()), 
+        key=lambda x: int(re.sub(r'[^0-9]', '', str(x))) if re.sub(r'[^0-9]', '', str(x)) else str(x), 
+        reverse=True
+    )
+    unique_periods = sorted(list(df['교시'].unique()))    
     periods = [str(p) for p in unique_periods]
     categories = sorted(list(df['분류'].unique()))
 
