@@ -1094,13 +1094,54 @@ if st.session_state.main_mode == "exam":
                         st.error("저장된 이미지 파일을 찾을 수 없습니다.")
     
                 with col_text:
-                    st.markdown("##### 📝 이미지 설명 내용")
-                    note_content = selected_item.get('note', '')
-                    if note_content:
-                        with st.container(border=True):
-                            render_formatted_content(note_content)
+                    # 항목별 수정 모드 상태 키
+                    key_edit_item = f"edit_item_{selected_img_idx}_{q_text}"
+                    if key_edit_item not in st.session_state:
+                        st.session_state[key_edit_item] = False
+
+                    col_n_title, col_n_btn = st.columns([60, 40], vertical_alignment="center")
+                    with col_n_title:
+                        st.markdown("##### 📝 이미지 설명")
+                    with col_n_btn:
+                        # [✏️ 설명 수정] / [💾 수정 완료] 토글 버튼
+                        if st.session_state[key_edit_item]:
+                            if st.button("💾 수정 저장", key=f"btn_save_item_{selected_img_idx}_{q_text}", type="primary", use_container_width=True):
+                                # 입력창의 값 반영
+                                new_cap = st.session_state.get(f"edit_cap_{selected_img_idx}_{q_text}", selected_item.get('caption', ''))
+                                new_note = st.session_state.get(f"edit_note_{selected_img_idx}_{q_text}", selected_item.get('note', ''))
+                                
+                                st.session_state.user_data[q_text]['image_notes'][selected_img_idx]['caption'] = new_cap
+                                st.session_state.user_data[q_text]['image_notes'][selected_img_idx]['note'] = new_note
+                                
+                                save_user_data(st.session_state.user_data)
+                                st.toast("이미지 설명이 수정되었습니다!")
+                                st.session_state[key_edit_item] = False
+                                st.rerun()
+                        else:
+                            if st.button("✏️ 설명 수정", key=f"btn_edit_item_{selected_img_idx}_{q_text}", use_container_width=True):
+                                st.session_state[key_edit_item] = True
+                                st.rerun()
+
+                    # 수정 모드 / 보기 모드 전환
+                    if st.session_state[key_edit_item]:
+                        st.text_input(
+                            "제목/캡션 수정", 
+                            value=selected_item.get('caption', ''), 
+                            key=f"edit_cap_{selected_img_idx}_{q_text}"
+                        )
+                        st.text_area(
+                            "설명 내용 수정", 
+                            value=selected_item.get('note', ''), 
+                            height=200, 
+                            key=f"edit_note_{selected_img_idx}_{q_text}"
+                        )
                     else:
-                        st.caption("작성된 설명 내용이 없습니다.")
+                        note_content = selected_item.get('note', '')
+                        if note_content:
+                            with st.container(border=True):
+                                render_formatted_content(note_content)
+                        else:
+                            st.caption("작성된 설명 내용이 없습니다.")
                     
                     st.write("---")
                     if st.button("🗑️ 선택된 이미지 삭제", key=f"del_img_{selected_img_idx}_{q_text}"):
