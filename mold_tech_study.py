@@ -882,7 +882,7 @@ if st.session_state.main_mode == "exam":
         # TAB 2: 모범 답안
         with tab2:
             st.markdown("### 2. 실제 시험 모범 답안")
-            st.info("실제 시험 채점 기준에 맞춰 개요, 본론, 결론 형식으로 서술형 답안을 작성합니다.")
+            # st.info("실제 시험 채점 기준에 맞춰 개요, 본론, 결론 형식으로 서술형 답안을 작성합니다.")
             
             key_hide_answer = f"hide_answer_{q_text}"
             if key_hide_answer not in st.session_state:
