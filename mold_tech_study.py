@@ -899,7 +899,14 @@ if st.session_state.main_mode == "exam":
                 toggle_label = "👁️ 입력창 보이기" if is_answer_hidden else "🙈 입력창 숨기기"
                 if st.button(toggle_label, key=f"btn_toggle_answer_{q_text}", use_container_width=True):
                     if f"answer_area_{q_text}" in st.session_state:
-                        st.session_state.user_data[q_text]['answer'] = st.session_state[f"answer_area_{q_text}"]
+                        answer_content = st.session_state[f"answer_area_{q_text}"]
+                        
+                        # 🚨 구글 시트 5만 자 제한 방지
+                        if len(answer_content) > 49000:
+                            answer_content = answer_content[:49000]
+                            st.warning("구글 시트 셀 용량 제한(5만 자)으로 인해 모범 답안 내용이 일부 잘려 저장되었습니다.")
+                            
+                        st.session_state.user_data[q_text]['answer'] = answer_content
                         save_user_data(st.session_state.user_data)
                     st.session_state[key_hide_answer] = not is_answer_hidden
                     st.rerun()
@@ -907,7 +914,14 @@ if st.session_state.main_mode == "exam":
             with col_b2:
                 if st.button("💾 저장하기", key=f"save_answer_{q_text}", type="primary", use_container_width=True):
                     if f"answer_area_{q_text}" in st.session_state:
-                        st.session_state.user_data[q_text]['answer'] = st.session_state[f"answer_area_{q_text}"]
+                        answer_content = st.session_state[f"answer_area_{q_text}"]
+                        
+                        # 🚨 구글 시트 5만 자 제한 방지
+                        if len(answer_content) > 49000:
+                            answer_content = answer_content[:49000]
+                            st.warning("구글 시트 셀 용량 제한(5만 자)으로 인해 모범 답안 내용이 일부 잘려 저장되었습니다.")
+                            
+                        st.session_state.user_data[q_text]['answer'] = answer_content
                     save_user_data(st.session_state.user_data)
                     st.toast("모범 답안이 저장되었습니다!")
     
