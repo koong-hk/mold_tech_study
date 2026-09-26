@@ -1,4 +1,4 @@
-# Backup 260926 1816
+# Backup 260927 1250
 
 import base64
 import calendar
@@ -42,10 +42,8 @@ def format_to_markdown(text: str) -> str:
     if not text:
         return ""
 
-    # 1. 윈도우/맥 줄바꿈 정규화
     text = text.replace('\r\n', '\n').replace('\r', '\n')
 
-    # 2. 잘못된 중복 기호 및 불필요한 인용구(>) 정리
     text = re.sub(r'-\s+-\s+', '- ', text)
     text = re.sub(r'(?:###\s*){2,}', '### ', text)
     text = re.sub(r'(?:##\s*){2,}', '## ', text)
@@ -58,23 +56,19 @@ def format_to_markdown(text: str) -> str:
     is_after_header = False
 
     for line in lines:
-        # 줄 시작 부근의 인용구 기호(>)와 공백을 깔끔하게 제거하거나 정돈
         line_clean_gt = re.sub(r'^\s*>\s*', '', line)
         stripped = line_clean_gt.strip()
         
-        # 빈 줄은 그대로 유지
         if not stripped:
             cleaned_lines.append("")
             is_after_header = False
             continue
 
-        # 구분선(---, ===) 또는 표(|) 형태는 건드리지 않음
         if stripped.startswith("---") or stripped.startswith("===") or stripped.startswith("|"):
             cleaned_lines.append(stripped)
             is_after_header = False
             continue
 
-        # 헤더(###, ## 등)나 리스트(-, *), 번호목록(1.)이 이미 적용된 경우 유지
         if re.match(r'^(#+|\*|-|\+|\d+\.)\s', stripped):
             if stripped.startswith("#"):
                 is_after_header = True
@@ -83,21 +77,17 @@ def format_to_markdown(text: str) -> str:
             cleaned_lines.append(stripped)
             continue
 
-        # 소제목 자동 변환 패턴 (예: "1. 제목")
         if re.match(r'^\d+\.\s+[^\n]+', stripped) and len(stripped) < 40:
             cleaned_lines.append(f"### {stripped}")
             is_after_header = True
             continue
 
-        # [특수 처리] "주요 특징:" 같은 타이틀 줄 처리 (콜론으로 끝나거나 대분류인 경우)
         if stripped.endswith(":") and len(stripped) < 25:
             cleaned_lines.append(f"**{stripped}**")
-            is_after_header = True # 바로 아래 줄을 내용(들여쓰기 및 리스트)으로 유도
+            is_after_header = True
             continue
 
-        # 들여쓰기 적용 (소제목 바로 아래 줄인 경우)
         if is_after_header:
-            # 내용 안에 "키: 설명" 형태가 포함되어 있다면 리스트형태로 자동 변환 (- **키:** 설명)
             if ":" in stripped and not stripped.startswith("-"):
                 parts = stripped.split(":", 1)
                 if len(parts[0].strip()) < 20:
@@ -110,7 +100,6 @@ def format_to_markdown(text: str) -> str:
             is_after_header = False
             continue
 
-        # 일반 키-값 패턴 변환 (이미 리스트나 마크다운 기호가 없는 경우만)
         if ":" in stripped and not stripped.startswith("http") and not stripped.startswith(("-", "*", "###", "##")):
             parts = stripped.split(":", 1)
             if len(parts[0].strip()) < 20 and not parts[0].strip().startswith("-"):
@@ -121,7 +110,6 @@ def format_to_markdown(text: str) -> str:
         cleaned_lines.append(stripped)
         is_after_header = False
 
-    # 연속된 빈 줄을 최대 2개로 제한
     result = "\n".join(cleaned_lines)
     result = re.sub(r'\n{3,}', '\n\n', result)
 
@@ -157,7 +145,7 @@ def get_kst_today():
     return datetime.now(kst).date()
 
 def load_notes():
-    """학습노트 데이터 로드 (Google Sheets 행 단위 분할 로드 -> 로컬 파일 폴백)"""
+    """학습노트 데이터 로드"""
     try:
         gc = get_gspread_client()
         if gc and "sheets" in st.secrets:
@@ -167,7 +155,6 @@ def load_notes():
             
             notes = []
             for row in rows:
-                # 첫 번째 셀에 전체 JSON(레거시 방식)이 들어있는 경우 호환성 유지
                 if len(row) == 1 and row[0]:
                     try:
                         data = json.loads(row[0])
@@ -176,7 +163,6 @@ def load_notes():
                     except Exception:
                         pass
                 
-                # 행 단위로 분할 저장된 경우 (A열: ID 또는 구분자, B열: 개별 노트 JSON)
                 if len(row) >= 2 and row[1]:
                     try:
                         note_item = json.loads(row[1])
@@ -185,7 +171,7 @@ def load_notes():
                     except Exception:
                         pass
             
-            if notes or rows == []:  # 빈 시트가 아닌 경우 로드된 노트 반환
+            if notes or rows == []:
                 return notes
     except Exception as e:
         st.warning(f"구글 시트 노트 로드 실패, 로컬 파일로 시도합니다: {e}")
@@ -200,8 +186,7 @@ def load_notes():
     return []
 
 def save_notes(notes):
-    """학습노트 데이터 저장 (구글 시트 셀 용량 초과 방지 및 로컬 백업)"""
-    # 1. 로컬 파일 백업은 전체 데이터를 온전하게 저장
+    """학습노트 데이터 저장"""
     try:
         with open(NOTES_FILE, "w", encoding="utf-8") as f:
             f.write(json.dumps(notes, ensure_ascii=False, indent=2))
@@ -220,17 +205,12 @@ def save_notes(notes):
                 note_id = str(note.get("id", ""))
                 json_val = json.dumps(note, ensure_ascii=False)
                 
-                # [핵심 방어 코드] 개별 셀이 구글 시트 제한(50,000자)을 넘지 않도록 체크
                 if len(json_val) > 48000:
-                    # 너무 클 경우, 데이터 유실을 최소화하거나 에러 방지를 위해 강제로 잘라냄 
-                    # (예: 이미지 데이터 등이 너무 클 경우 경고를 남기거나 처리)
                     note_copy = note.copy()
-                    # 만약 큰 데이터 필드가 있다면 줄이거나 대체할 수 있습니다.
                     if "image" in note_copy:
                         note_copy["image"] = "[이미지 데이터 용량 초과로 생략됨]"
                     json_val = json.dumps(note_copy, ensure_ascii=False)
                     
-                    # 그래도 48000자를 넘는다면 강제로 자름 (문자열 파손 방지용 최후 수단)
                     if len(json_val) > 48000:
                         json_val = json_val[:48000] + "...(내용 생략)"
                 
@@ -263,7 +243,8 @@ def load_user_data():
                             data[row[0]] = json.loads(row[1])
                     except Exception:
                         pass
-            return data
+            if data:
+                return data
     except Exception as e:
         st.warning(f"구글 시트 기출데이터 로드 실패, 로컬 파일로 시도합니다: {e}")
 
@@ -296,6 +277,9 @@ def save_user_data(data):
                     rows_to_update.append([q_key, str(q_val)])
                 else:
                     json_val = json.dumps(q_val, ensure_ascii=False)
+                    # 🚨 구글 시트 5만 자 초과 방지 최후 방어선
+                    if len(json_val) > 48000:
+                        json_val = json_val[:48000]
                     rows_to_update.append([q_key, json_val])
             
             sh.clear()
@@ -320,7 +304,6 @@ def render_mini_calendar():
     today = get_kst_today()
     year, month, today_day = today.year, today.month, today.day
     
-    # 1. 달력의 시작 요일을 '일요일'로 설정 (기본값: 월요일)
     cal_obj = calendar.Calendar(firstweekday=calendar.SUNDAY)
     cal = cal_obj.monthdayscalendar(year, month)
     
@@ -423,7 +406,7 @@ if "current_q" not in st.session_state:
     st.session_state.current_q = None
 
 # -----------------------------------------------------------------------------
-# 6. 정제된 CSS 스타일 적용 (기출문제 & 학습노트 통합 위치/서식 보정)
+# 6. 정제된 CSS 스타일 적용
 # -----------------------------------------------------------------------------
 st.markdown("""
     <style>
@@ -519,7 +502,6 @@ st.markdown("""
             line-height: 1.1 !important;
         }
 
-        /* 기출문제 및 학습노트 공통 들여쓰기/목록 스타일 (.custom-markdown-box) */
         .custom-markdown-box {
             width: 100% !important;
         }
@@ -588,7 +570,6 @@ st.markdown("""
             padding: 0 !important;
         }
 
-        /* 첫 페이지 상단 헤더 위치와 완벽히 정렬하는 상단 컨트롤 영역 */
         .header-aligned-buttons {
             margin-top: 0px !important;
             margin-bottom: 0.6rem !important;
@@ -652,28 +633,31 @@ with st.sidebar:
 
     df = load_excel_data(uploaded_file)
 
+    # 🚨 [수정 및 안전성 보장] 덮어쓰기 방지 안전 초기화 알고리즘 적용
     for q in df['문제']:
         if q not in st.session_state.user_data:
             st.session_state.user_data[q] = {
                 'clicks': 0, 'importance': 3, 
-                'concept': '', 'answer': '', 'extra': '',
+                'concept': '', 'answer': '', 'memo': '',
                 'image_notes': []
             }
-        elif 'image_notes' not in st.session_state.user_data[q]:
-            st.session_state.user_data[q]['image_notes'] = []
+        else:
+            # 기존 저장된 데이터를 절대로 날리지 않도록 누락된 필드만 안전 보장
+            st.session_state.user_data[q].setdefault('clicks', 0)
+            st.session_state.user_data[q].setdefault('importance', 3)
+            st.session_state.user_data[q].setdefault('concept', '')
+            st.session_state.user_data[q].setdefault('answer', '')
+            st.session_state.user_data[q].setdefault('memo', '')
+            st.session_state.user_data[q].setdefault('image_notes', [])
 
     df['조회수'] = df['문제'].apply(lambda x: st.session_state.user_data[x]['clicks'])
     df['중요도(별)'] = df['문제'].apply(lambda x: "⭐" * st.session_state.user_data[x]['importance'])
 
-    # 회차 정렬: 내림차순(최신 회차 순서)
-    # 정규표현식을 사용해 '회'나 소수점 등을 무시하고 순수 숫자만 추출하여 정렬
-
-    # 숫자와 문자열이 섞여 있어도 TypeError 없이 정렬되도록 보정
     def extract_number_key(x):
         digits = re.sub(r'[^0-9]', '', str(x))
         if digits:
-            return (0, int(digits))  # 숫자가 추출되면 우선순위 0, 정수값 비교
-        return (1, str(x))           # 숫자가 없으면 우선순위 1, 문자열 비교
+            return (0, int(digits))
+        return (1, str(x))
 
     rounds = sorted(list(df['회차'].unique()), key=extract_number_key, reverse=True)
     unique_periods = sorted(list(df['교시'].unique()))
@@ -749,7 +733,6 @@ if sort_by_clicks:
 # -----------------------------------------------------------------------------
 if st.session_state.main_mode == "exam":
     if not st.session_state.show_detail:
-        # [기준 헤더] 우측 화면 첫 페이지 헤더
         st.markdown("<h1>📚 금형기술사 기출문제 리스트</h1>", unsafe_allow_html=True)
         st.write("필터링된 문제 목록입니다. 목록에서 문제를 선택한 후 하단 버튼을 클릭하면 상세 학습 화면으로 이동합니다.")
         
@@ -796,7 +779,6 @@ if st.session_state.main_mode == "exam":
         q_text = st.session_state.current_q
         q_data = st.session_state.user_data[q_text]
         
-        # 메인 제목 위치와 동일하게 맞추기 위한 헤더 정렬 CSS 적용
         st.markdown("<div class='header-aligned-buttons'></div>", unsafe_allow_html=True)
         
         if st.button("⬅️ 리스트로 돌아가기", use_container_width=False):
@@ -834,10 +816,11 @@ if st.session_state.main_mode == "exam":
             "🖼️ 이미지 및 설명 자료"
         ])
     
-        # TAB 1: 개념 설명
+        # ---------------------------------------------------------------------
+        # TAB 1: 답안 개념 설명 (보존 완전 수정)
+        # ---------------------------------------------------------------------
         with tab1:
             st.markdown("### 1. 답안 개념 설명")
-            # st.info("해당 문제에 필요한 이론적 배경, 핵심 메커니즘 및 요약 개념을 정리합니다.")
             
             key_hide_concept = f"hide_concept_{q_text}"
             if key_hide_concept not in st.session_state:
@@ -851,45 +834,52 @@ if st.session_state.main_mode == "exam":
                 toggle_label = "👁️ 입력창 보이기" if is_concept_hidden else "🙈 입력창 숨기기"
                 if st.button(toggle_label, key=f"btn_toggle_concept_{q_text}", use_container_width=True):
                     if f"concept_area_{q_text}" in st.session_state:
-                        st.session_state.user_data[q_text]['concept'] = st.session_state[f"concept_area_{q_text}"]
+                        c_text = st.session_state[f"concept_area_{q_text}"]
+                        if len(c_text) > 48000:
+                            c_text = c_text[:48000]
+                        st.session_state.user_data[q_text]['concept'] = c_text
                         save_user_data(st.session_state.user_data)
                     st.session_state[key_hide_concept] = not is_concept_hidden
                     st.rerun()
             with col_b1:
                 if st.button("💾 저장하기", key=f"save_concept_{q_text}", type="primary", use_container_width=True):
                     if f"concept_area_{q_text}" in st.session_state:
-                        st.session_state.user_data[q_text]['concept'] = st.session_state[f"concept_area_{q_text}"]
+                        c_text = st.session_state[f"concept_area_{q_text}"]
+                        if len(c_text) > 48000:
+                            c_text = c_text[:48000]
+                        st.session_state.user_data[q_text]['concept'] = c_text
                     save_user_data(st.session_state.user_data)
-                    st.toast("개념 설명이 저장되었습니다!")
+                    st.toast("개념 설명이 성공적으로 저장되었습니다!")
     
             if not is_concept_hidden:
                 concept_text = st.text_area(
                     "개념을 정리하세요. (마크다운 지원)", 
-                    value=q_data['concept'], 
+                    value=q_data.get('concept', ''), 
                     height=180, 
                     key=f"concept_area_{q_text}",
                     label_visibility="collapsed"
                 )
-                if q_data['concept']:
+                if q_data.get('concept'):
                     st.write("---")
                     st.markdown("#### 📖 개념 설명 (서식 적용 화면)")
                     with st.container(border=True):
                         render_formatted_content(q_data['concept'])
             else:
-                if q_data['concept']:
+                if q_data.get('concept'):
                     with st.container(border=True):
                         render_formatted_content(q_data['concept'])
                 else:
                     st.caption("작성된 개념 설명이 없습니다. '입력창 보이기'를 눌러 내용을 입력해 보세요.")
     
-        # TAB 2: 모범 답안
+        # ---------------------------------------------------------------------
+        # TAB 2: 모범 답안 (보존 완전 수정)
+        # ---------------------------------------------------------------------
         with tab2:
             key_hide_answer = f"hide_answer_{q_text}"
             if key_hide_answer not in st.session_state:
                 st.session_state[key_hide_answer] = True
             is_answer_hidden = st.session_state[key_hide_answer]
             
-            # 제목과 버튼 2개를 동일한 행(row)에 세로 중앙 정렬로 배치
             col_t2, col_h2, col_b2 = st.columns([68, 16, 16], vertical_alignment="center")
             
             with col_t2:
@@ -900,11 +890,9 @@ if st.session_state.main_mode == "exam":
                 if st.button(toggle_label, key=f"btn_toggle_answer_{q_text}", use_container_width=True):
                     if f"answer_area_{q_text}" in st.session_state:
                         answer_content = st.session_state[f"answer_area_{q_text}"]
-                        
-                        # 🚨 구글 시트 5만 자 제한 방지
-                        if len(answer_content) > 49000:
-                            answer_content = answer_content[:49000]
-                            st.warning("구글 시트 셀 용량 제한(5만 자)으로 인해 모범 답안 내용이 일부 잘려 저장되었습니다.")
+                        if len(answer_content) > 48000:
+                            answer_content = answer_content[:48000]
+                            st.warning("구글 시트 셀 용량 제한으로 인해 모범 답안 내용이 일부 잘려 저장되었습니다.")
                             
                         st.session_state.user_data[q_text]['answer'] = answer_content
                         save_user_data(st.session_state.user_data)
@@ -915,82 +903,73 @@ if st.session_state.main_mode == "exam":
                 if st.button("💾 저장하기", key=f"save_answer_{q_text}", type="primary", use_container_width=True):
                     if f"answer_area_{q_text}" in st.session_state:
                         answer_content = st.session_state[f"answer_area_{q_text}"]
-                        
-                        # 🚨 구글 시트 5만 자 제한 방지
-                        if len(answer_content) > 49000:
-                            answer_content = answer_content[:49000]
-                            st.warning("구글 시트 셀 용량 제한(5만 자)으로 인해 모범 답안 내용이 일부 잘려 저장되었습니다.")
+                        if len(answer_content) > 48000:
+                            answer_content = answer_content[:48000]
+                            st.warning("구글 시트 셀 용량 제한으로 인해 모범 답안 내용이 일부 잘려 저장되었습니다.")
                             
                         st.session_state.user_data[q_text]['answer'] = answer_content
                     save_user_data(st.session_state.user_data)
-                    st.toast("모범 답안이 저장되었습니다!")
+                    st.toast("모범 답안이 성공적으로 저장되었습니다!")
     
             if not is_answer_hidden:
                 answer_text = st.text_area(
                     "시험 양식에 맞춘 모범 답안을 작성하세요. (마크다운 지원)", 
-                    value=q_data['answer'], 
+                    value=q_data.get('answer', ''), 
                     height=180, 
                     key=f"answer_area_{q_text}",
                     label_visibility="collapsed"
                 )
-                if q_data['answer']:
+                if q_data.get('answer'):
                     st.write("---")
                     st.markdown("#### 📄 모범 답안 (서식 적용 화면)")
                     with st.container(border=True):
                         render_formatted_content(q_data['answer'])
             else:
-                if q_data['answer']:
+                if q_data.get('answer'):
                     with st.container(border=True):
                         render_formatted_content(q_data['answer'])
                 else:
                     st.caption("작성된 모범 답안이 없습니다. '입력창 보이기'를 눌러 내용을 입력해 보세요.")
     
-        # TAB 3: 추가자료 및 메모
+        # ---------------------------------------------------------------------
+        # TAB 3: 추가자료 및 메모 (보존 완전 수정)
+        # ---------------------------------------------------------------------
         with tab3:
             key_edit_memo = f"edit_memo_{q_text}"
             key_memo_area = f"memo_area_{q_text}"
             
-            # 편집 모드 상태 관리 (기본값: False -> 뷰어 모드)
             if key_edit_memo not in st.session_state:
                 st.session_state[key_edit_memo] = False
 
-            # 헤더 영역 (제목 + 수정/저장 버튼)
             col_t3, col_b3 = st.columns([70, 30], vertical_alignment="center")
             
             with col_t3:
                 st.markdown("### 3. 추가자료 및 메모")
 
             with col_b3:
-                # 1) 현재 수정 모드일 때 -> '💾 저장하기' 버튼 표시
                 if st.session_state[key_edit_memo]:
                     if st.button("💾 저장하기", key=f"save_memo_{q_text}", type="primary", use_container_width=True):
                         if key_memo_area in st.session_state:
                             memo_content = st.session_state[key_memo_area]
-                            
-                            # 🚨 구글 시트 5만 자 제한 방지 (최대 49,000자로 제한)
-                            if len(memo_content) > 49000:
-                                memo_content = memo_content[:49000]
-                                st.warning("구글 시트 셀 용량 제한(5만 자)으로 인해 내용이 일부 잘려 저장되었습니다.")
+                            if len(memo_content) > 48000:
+                                memo_content = memo_content[:48000]
+                                st.warning("구글 시트 용량 제한으로 인해 내용이 일부 잘려 저장되었습니다.")
                             
                             st.session_state.user_data[q_text]['memo'] = memo_content
                             save_user_data(st.session_state.user_data)
                             st.toast("메모가 저장되었습니다!")
                         
-                        # 저장 완료 후 읽기 모드로 전환
                         st.session_state[key_edit_memo] = False
                         st.rerun()
 
-                # 2) 현재 읽기 모드일 때 -> '✏️ 수정하기' 버튼 표시
                 else:
                     if st.button("✏️ 수정하기", key=f"btn_edit_memo_{q_text}", use_container_width=True):
                         st.session_state[key_edit_memo] = True
                         st.rerun()
 
-            # 본문 영역 (수정 모드 여부에 따른 분기)
             current_memo = st.session_state.user_data[q_text].get('memo', '')
 
             if st.session_state[key_edit_memo]:
-                # 수정 모드: 텍스트 에어리어 표시
                 st.text_area(
                     "메모 내용 편집",
                     value=current_memo,
@@ -999,16 +978,17 @@ if st.session_state.main_mode == "exam":
                     label_visibility="collapsed"
                 )
             else:
-                # 읽기 모드: 작성된 메모가 없으면 안내 문구 표시, 있으면 마크다운으로 출력
                 if current_memo.strip():
-                    st.markdown(current_memo)
+                    with st.container(border=True):
+                        render_formatted_content(current_memo)
                 else:
                     st.info("등록된 추가자료나 메모가 없습니다. 우측 상단의 '✏️ 수정하기' 버튼을 눌러 작성해 보세요.")
     
+        # ---------------------------------------------------------------------
         # TAB 4: 구글 검색
+        # ---------------------------------------------------------------------
         with tab4:
             st.markdown("### 4. 구글 검색")
-            # st.info("문제를 해결하기 위해 관련된 최신 technical자료 및 도면 정보를 구글에서 바로 검색합니다.")
             
             search_query = st.text_input("검색어 입력", value=q_text)
             
@@ -1027,10 +1007,11 @@ if st.session_state.main_mode == "exam":
                     unsafe_allow_html=True
                 )
     
-        # TAB 5: 이미지 및 설명 자료
+        # ---------------------------------------------------------------------
+        # TAB 5: 이미지 및 설명 자료 (보존 완전 수정)
+        # ---------------------------------------------------------------------
         with tab5:
             st.markdown("### 5. 이미지 및 설명 자료")
-            # st.info("금형 구조 도면, 3D CAD 캡처, 시뮬레이션 결과 이미지와 관련 설명을 함께 등록 및 확인할 수 있습니다.")
             
             with st.expander("➕ 새 이미지 및 설명 추가하기", expanded=False):
                 uploaded_img = st.file_uploader(
@@ -1108,7 +1089,6 @@ if st.session_state.main_mode == "exam":
                         st.error("저장된 이미지 파일을 찾을 수 없습니다.")
     
                 with col_text:
-                    # 항목별 수정 모드 상태 키
                     key_edit_item = f"edit_item_{selected_img_idx}_{q_text}"
                     if key_edit_item not in st.session_state:
                         st.session_state[key_edit_item] = False
@@ -1117,10 +1097,8 @@ if st.session_state.main_mode == "exam":
                     with col_n_title:
                         st.markdown("##### 📝 이미지 설명")
                     with col_n_btn:
-                        # [✏️ 설명 수정] / [💾 수정 완료] 토글 버튼
                         if st.session_state[key_edit_item]:
                             if st.button("💾 수정 저장", key=f"btn_save_item_{selected_img_idx}_{q_text}", type="primary", use_container_width=True):
-                                # 입력창의 값 반영
                                 new_cap = st.session_state.get(f"edit_cap_{selected_img_idx}_{q_text}", selected_item.get('caption', ''))
                                 new_note = st.session_state.get(f"edit_note_{selected_img_idx}_{q_text}", selected_item.get('note', ''))
                                 
@@ -1136,7 +1114,6 @@ if st.session_state.main_mode == "exam":
                                 st.session_state[key_edit_item] = True
                                 st.rerun()
 
-                    # 수정 모드 / 보기 모드 전환
                     if st.session_state[key_edit_item]:
                         st.text_input(
                             "제목/캡션 수정", 
@@ -1195,7 +1172,6 @@ elif st.session_state.main_mode == "note":
 
             st.markdown("<div style='margin-bottom: 10px;'></div>", unsafe_allow_html=True)
 
-            # 노트 내용 렌더링
             with st.container(border=True):
                 if note.get("content"):
                     render_formatted_content(note["content"])
@@ -1311,7 +1287,6 @@ elif st.session_state.main_mode == "note":
 
                     note["category"] = edit_cat
                     note["title"] = edit_title
-                    # [수정] 편집된 내용도 마크다운 자동 변환 후 저장
                     note["content"] = format_to_markdown(edit_content)
                     note["links"] = [line.strip() for line in edit_links_raw.split('\n') if line.strip()]
                     note["images"] = keep_imgs
@@ -1330,7 +1305,7 @@ elif st.session_state.main_mode == "note":
                     st.session_state.selected_note_id = None
                     st.rerun()
 
-    # [3] 학습노트 메인 리스트 화면 (데이터프레임 형태)
+    # [3] 학습노트 메인 리스트 화면
     else:
         st.markdown("<h1>📖 학습노트 관리</h1>", unsafe_allow_html=True)
         st.write("나만의 금형기술사 서브노트 및 개념 정리 노트 목록입니다. 목록에서 노트를 선택하여 상세 내용을 확인하세요.")
@@ -1399,7 +1374,6 @@ elif st.session_state.main_mode == "note":
                         if not new_title.strip():
                             st.error("노트 제목을 입력해주세요.")
                         else:
-                            # 1. 입력된 내용을 마크다운 형식으로 자동 변환
                             formatted_content = format_to_markdown(new_content)
                                 
                             links_list = [line.strip() for line in new_links_raw.split('\n') if line.strip()]
@@ -1415,10 +1389,10 @@ elif st.session_state.main_mode == "note":
                                 "id": new_id,
                                 "category": new_cat,
                                 "title": new_title.strip(),
-                                "content": formatted_content,  # [수정] 변환된 formatted_content 저장!
+                                "content": formatted_content,
                                 "links": links_list,
                                 "images": imgs_list,
-                                "updated_at": datetime.now().strftime("%Y-%m-%d %H:%M")
+                                "updated_at": datetime.strftime("%Y-%m-%d %H:%M")
                             }
                             st.session_state.notes.insert(0, new_entry)
                             save_notes(st.session_state.notes)
