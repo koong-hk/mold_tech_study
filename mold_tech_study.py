@@ -796,6 +796,9 @@ if st.session_state.main_mode == "exam":
         q_text = st.session_state.current_q
         q_data = st.session_state.user_data[q_text]
         
+        # 메인 제목 위치와 동일하게 맞추기 위한 헤더 정렬 CSS 적용
+        st.markdown("<div class='header-aligned-buttons'></div>", unsafe_allow_html=True)
+        
         if st.button("⬅️ 리스트로 돌아가기", use_container_width=False):
             st.session_state.show_detail = False
             st.session_state.current_q = None
