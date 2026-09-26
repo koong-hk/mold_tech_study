@@ -931,53 +931,65 @@ if st.session_state.main_mode == "exam":
                 else:
                     st.caption("작성된 모범 답안이 없습니다. '입력창 보이기'를 눌러 내용을 입력해 보세요.")
     
-        # TAB 3: 추가 자료
+        # TAB 3: 추가자료 및 메모
         with tab3:
-            st.markdown("### 3. 추가 자료 및 메모")
-            # st.info("관련 수식, 외부 논문 출처, 참고 웹페이지 링크 및 개인적인 학습 메모를 작성합니다.")
+            key_edit_memo = f"edit_memo_{q_text}"
+            key_memo_area = f"memo_area_{q_text}"
             
-            key_hide_extra = f"hide_extra_{q_text}"
-            if key_hide_extra not in st.session_state:
-                st.session_state[key_hide_extra] = True
-            is_extra_hidden = st.session_state[key_hide_extra]
-    
-            col_t3, col_h3, col_b3 = st.columns([68, 16, 16], vertical_alignment="center")
+            # 편집 모드 상태 관리 (기본값: False -> 뷰어 모드)
+            if key_edit_memo not in st.session_state:
+                st.session_state[key_edit_memo] = False
+
+            # 헤더 영역 (제목 + 수정/저장 버튼)
+            col_t3, col_b3 = st.columns([70, 30], vertical_alignment="center")
+            
             with col_t3:
-                st.write("")
-            with col_h3:
-                toggle_label = "👁️ 입력창 보이기" if is_extra_hidden else "🙈 입력창 숨기기"
-                if st.button(toggle_label, key=f"btn_toggle_extra_{q_text}", use_container_width=True):
-                    if f"extra_area_{q_text}" in st.session_state:
-                        st.session_state.user_data[q_text]['extra'] = st.session_state[f"extra_area_{q_text}"]
-                        save_user_data(st.session_state.user_data)
-                    st.session_state[key_hide_extra] = not is_extra_hidden
-                    st.rerun()
+                st.markdown("### 3. 추가자료 및 메모")
+
             with col_b3:
-                if st.button("💾 저장하기", key=f"save_extra_{q_text}", type="primary", use_container_width=True):
-                    if f"extra_area_{q_text}" in st.session_state:
-                        st.session_state.user_data[q_text]['extra'] = st.session_state[f"extra_area_{q_text}"]
-                    save_user_data(st.session_state.user_data)
-                    st.toast("추가 자료가 저장되었습니다!")
-    
-            if not is_extra_hidden:
-                extra_text = st.text_area(
-                    "참고할 추가 메모나 링크를 입력하세요. (마크다운 지원)", 
-                    value=q_data['extra'], 
-                    height=180, 
-                    key=f"extra_area_{q_text}",
+                # 1) 현재 수정 모드일 때 -> '💾 저장하기' 버튼 표시
+                if st.session_state[key_edit_memo]:
+                    if st.button("💾 저장하기", key=f"save_memo_{q_text}", type="primary", use_container_width=True):
+                        if key_memo_area in st.session_state:
+                            memo_content = st.session_state[key_memo_area]
+                            
+                            # 🚨 구글 시트 5만 자 제한 방지 (최대 49,000자로 제한)
+                            if len(memo_content) > 49000:
+                                memo_content = memo_content[:49000]
+                                st.warning("구글 시트 셀 용량 제한(5만 자)으로 인해 내용이 일부 잘려 저장되었습니다.")
+                            
+                            st.session_state.user_data[q_text]['memo'] = memo_content
+                            save_user_data(st.session_state.user_data)
+                            st.toast("메모가 저장되었습니다!")
+                        
+                        # 저장 완료 후 읽기 모드로 전환
+                        st.session_state[key_edit_memo] = False
+                        st.rerun()
+
+                # 2) 현재 읽기 모드일 때 -> '✏️ 수정하기' 버튼 표시
+                else:
+                    if st.button("✏️ 수정하기", key=f"btn_edit_memo_{q_text}", use_container_width=True):
+                        st.session_state[key_edit_memo] = True
+                        st.rerun()
+
+            # 본문 영역 (수정 모드 여부에 따른 분기)
+            current_memo = st.session_state.user_data[q_text].get('memo', '')
+
+            if st.session_state[key_edit_memo]:
+                # 수정 모드: 텍스트 에어리어 표시
+                st.text_area(
+                    "메모 내용 편집",
+                    value=current_memo,
+                    key=key_memo_area,
+                    height=300,
                     label_visibility="collapsed"
                 )
-                if q_data['extra']:
-                    st.write("---")
-                    st.markdown("#### 📎 추가 자료 및 메모 (서식 적용 화면)")
-                    with st.container(border=True):
-                        render_formatted_content(q_data['extra'])
             else:
-                if q_data['extra']:
-                    with st.container(border=True):
-                        render_formatted_content(q_data['extra'])
+                # 읽기 모드: 작성된 메모가 없으면 안내 문구 표시, 있으면 마크다운으로 출력
+                if current_memo.strip():
+                    st.markdown(current_memo)
                 else:
-                    st.caption("작성된 추가 자료가 없습니다. '입력창 보이기'를 눌러 내용을 입력해 보세요.")
+                    st.info("등록된 추가자료나 메모가 없습니다. 우측 상단의 '✏️ 수정하기' 버튼을 눌러 작성해 보세요.")
     
         # TAB 4: 구글 검색
         with tab4:
