@@ -884,17 +884,17 @@ if st.session_state.main_mode == "exam":
     
         # TAB 2: 모범 답안
         with tab2:
-            st.markdown("### 2. 실제 시험 모범 답안")
-            # st.info("실제 시험 채점 기준에 맞춰 개요, 본론, 결론 형식으로 서술형 답안을 작성합니다.")
-            
             key_hide_answer = f"hide_answer_{q_text}"
             if key_hide_answer not in st.session_state:
                 st.session_state[key_hide_answer] = True
             is_answer_hidden = st.session_state[key_hide_answer]
-    
+            
+            # 제목과 버튼 2개를 동일한 행(row)에 세로 중앙 정렬로 배치
             col_t2, col_h2, col_b2 = st.columns([68, 16, 16], vertical_alignment="center")
+            
             with col_t2:
-                st.write("")
+                st.markdown("### 2. 실제 시험 모범 답안")
+                
             with col_h2:
                 toggle_label = "👁️ 입력창 보이기" if is_answer_hidden else "🙈 입력창 숨기기"
                 if st.button(toggle_label, key=f"btn_toggle_answer_{q_text}", use_container_width=True):
@@ -903,6 +903,7 @@ if st.session_state.main_mode == "exam":
                         save_user_data(st.session_state.user_data)
                     st.session_state[key_hide_answer] = not is_answer_hidden
                     st.rerun()
+                    
             with col_b2:
                 if st.button("💾 저장하기", key=f"save_answer_{q_text}", type="primary", use_container_width=True):
                     if f"answer_area_{q_text}" in st.session_state:
