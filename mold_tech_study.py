@@ -277,7 +277,6 @@ def save_user_data(data):
                     rows_to_update.append([q_key, str(q_val)])
                 else:
                     json_val = json.dumps(q_val, ensure_ascii=False)
-                    # 🚨 구글 시트 5만 자 초과 방지 최후 방어선
                     if len(json_val) > 48000:
                         json_val = json_val[:48000]
                     rows_to_update.append([q_key, json_val])
@@ -633,7 +632,6 @@ with st.sidebar:
 
     df = load_excel_data(uploaded_file)
 
-    # 🚨 [수정 및 안전성 보장] 덮어쓰기 방지 안전 초기화 알고리즘 적용
     for q in df['문제']:
         if q not in st.session_state.user_data:
             st.session_state.user_data[q] = {
@@ -642,7 +640,6 @@ with st.sidebar:
                 'image_notes': []
             }
         else:
-            # 기존 저장된 데이터를 절대로 날리지 않도록 누락된 필드만 안전 보장
             st.session_state.user_data[q].setdefault('clicks', 0)
             st.session_state.user_data[q].setdefault('importance', 3)
             st.session_state.user_data[q].setdefault('concept', '')
@@ -817,19 +814,19 @@ if st.session_state.main_mode == "exam":
         ])
     
         # ---------------------------------------------------------------------
-        # TAB 1: 답안 개념 설명 (보존 완전 수정)
+        # TAB 1: 답안 개념 설명 (2번 탭과 위치 완전 수평 맞춤)
         # ---------------------------------------------------------------------
         with tab1:
-            st.markdown("### 1. 답안 개념 설명")
-            
             key_hide_concept = f"hide_concept_{q_text}"
             if key_hide_concept not in st.session_state:
                 st.session_state[key_hide_concept] = True
             is_concept_hidden = st.session_state[key_hide_concept]
     
             col_t1, col_h1, col_b1 = st.columns([68, 16, 16], vertical_alignment="center")
+            
             with col_t1:
-                st.write("")
+                st.markdown("### 1. 답안 개념 설명")
+                
             with col_h1:
                 toggle_label = "👁️ 입력창 보이기" if is_concept_hidden else "🙈 입력창 숨기기"
                 if st.button(toggle_label, key=f"btn_toggle_concept_{q_text}", use_container_width=True):
@@ -841,6 +838,7 @@ if st.session_state.main_mode == "exam":
                         save_user_data(st.session_state.user_data)
                     st.session_state[key_hide_concept] = not is_concept_hidden
                     st.rerun()
+                    
             with col_b1:
                 if st.button("💾 저장하기", key=f"save_concept_{q_text}", type="primary", use_container_width=True):
                     if f"concept_area_{q_text}" in st.session_state:
@@ -872,7 +870,7 @@ if st.session_state.main_mode == "exam":
                     st.caption("작성된 개념 설명이 없습니다. '입력창 보이기'를 눌러 내용을 입력해 보세요.")
     
         # ---------------------------------------------------------------------
-        # TAB 2: 모범 답안 (보존 완전 수정)
+        # TAB 2: 모범 답안
         # ---------------------------------------------------------------------
         with tab2:
             key_hide_answer = f"hide_answer_{q_text}"
@@ -932,7 +930,7 @@ if st.session_state.main_mode == "exam":
                     st.caption("작성된 모범 답안이 없습니다. '입력창 보이기'를 눌러 내용을 입력해 보세요.")
     
         # ---------------------------------------------------------------------
-        # TAB 3: 추가자료 및 메모 (보존 완전 수정)
+        # TAB 3: 추가자료 및 메모
         # ---------------------------------------------------------------------
         with tab3:
             key_edit_memo = f"edit_memo_{q_text}"
@@ -1008,7 +1006,7 @@ if st.session_state.main_mode == "exam":
                 )
     
         # ---------------------------------------------------------------------
-        # TAB 5: 이미지 및 설명 자료 (보존 완전 수정)
+        # TAB 5: 이미지 및 설명 자료
         # ---------------------------------------------------------------------
         with tab5:
             st.markdown("### 5. 이미지 및 설명 자료")
