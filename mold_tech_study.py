@@ -1,3 +1,5 @@
+# Backup 260926 1816
+
 import base64
 import calendar
 from datetime import date, datetime, timedelta, timezone
@@ -663,7 +665,8 @@ with st.sidebar:
     df['조회수'] = df['문제'].apply(lambda x: st.session_state.user_data[x]['clicks'])
     df['중요도(별)'] = df['문제'].apply(lambda x: "⭐" * st.session_state.user_data[x]['importance'])
 
-    rounds = sorted(list(df['회차'].unique()), reverse=True)
+    # 회차 정렬: 내림차순(최신 회차 순서)
+    rounds = sorted(list(df['회차'].unique()), key=lambda x: int(x) if str(x).isdigit() else x, reverse=True)
     unique_periods = sorted(list(df['교시'].unique()))
     periods = [str(p) for p in unique_periods]
     categories = sorted(list(df['분류'].unique()))
