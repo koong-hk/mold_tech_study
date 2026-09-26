@@ -837,7 +837,7 @@ if st.session_state.main_mode == "exam":
         # TAB 1: 개념 설명
         with tab1:
             st.markdown("### 1. 답안 개념 설명")
-            st.info("해당 문제에 필요한 이론적 배경, 핵심 메커니즘 및 요약 개념을 정리합니다.")
+            # st.info("해당 문제에 필요한 이론적 배경, 핵심 메커니즘 및 요약 개념을 정리합니다.")
             
             key_hide_concept = f"hide_concept_{q_text}"
             if key_hide_concept not in st.session_state:
@@ -933,7 +933,7 @@ if st.session_state.main_mode == "exam":
         # TAB 3: 추가 자료
         with tab3:
             st.markdown("### 3. 추가 자료 및 메모")
-            st.info("관련 수식, 외부 논문 출처, 참고 웹페이지 링크 및 개인적인 학습 메모를 작성합니다.")
+            # st.info("관련 수식, 외부 논문 출처, 참고 웹페이지 링크 및 개인적인 학습 메모를 작성합니다.")
             
             key_hide_extra = f"hide_extra_{q_text}"
             if key_hide_extra not in st.session_state:
@@ -981,7 +981,7 @@ if st.session_state.main_mode == "exam":
         # TAB 4: 구글 검색
         with tab4:
             st.markdown("### 4. 구글 검색")
-            st.info("문제를 해결하기 위해 관련된 최신 technical자료 및 도면 정보를 구글에서 바로 검색합니다.")
+            # st.info("문제를 해결하기 위해 관련된 최신 technical자료 및 도면 정보를 구글에서 바로 검색합니다.")
             
             search_query = st.text_input("검색어 입력", value=q_text)
             
