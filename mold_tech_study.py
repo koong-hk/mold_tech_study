@@ -1016,7 +1016,7 @@ if st.session_state.main_mode == "exam":
         # TAB 5: 이미지 및 설명 자료
         with tab5:
             st.markdown("### 5. 이미지 및 설명 자료")
-            st.info("금형 구조 도면, 3D CAD 캡처, 시뮬레이션 결과 이미지와 관련 설명을 함께 등록 및 확인할 수 있습니다.")
+            # st.info("금형 구조 도면, 3D CAD 캡처, 시뮬레이션 결과 이미지와 관련 설명을 함께 등록 및 확인할 수 있습니다.")
             
             with st.expander("➕ 새 이미지 및 설명 추가하기", expanded=False):
                 uploaded_img = st.file_uploader(
