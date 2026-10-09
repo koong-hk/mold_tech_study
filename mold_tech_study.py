@@ -1,4 +1,4 @@
-# Backup 260927 1250
+# Backup 261009 1206
 
 import base64
 import calendar
@@ -24,26 +24,16 @@ st.set_page_config(page_title="금형기술사 학습 시스템", layout="wide")
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 NOTES_FILE = os.path.join(BASE_DIR, "notes.json")
 USER_DATA_FILE = os.path.join(BASE_DIR, "user_study_data.json")
-IMAGE_DIR = os.path.join(BASE_DIR, "saved_images")
 
-if not os.path.exists(IMAGE_DIR):
-    os.makedirs(IMAGE_DIR, exist_ok=True)
-
-
-# ==========================================
-# 헬퍼 함수: 마크다운 자동 변환
-# ==========================================
-
+# -----------------------------------------------------------------------------
+# 헬퍼 함수: 마크다운 자동 변환 및 수식 보정
+# -----------------------------------------------------------------------------
 def format_to_markdown(text: str) -> str:
-    """
-    텍스트를 마크다운으로 깔끔하게 정돈하는 함수.
-    중복 기호 증식을 막고, 인용구(>)가 섞인 텍스트를 깔끔하게 정돈합니다.
-    """
+    """텍스트를 마크다운으로 깔끔하게 정돈하는 함수."""
     if not text:
         return ""
 
     text = text.replace('\r\n', '\n').replace('\r', '\n')
-
     text = re.sub(r'-\s+-\s+', '- ', text)
     text = re.sub(r'(?:###\s*){2,}', '### ', text)
     text = re.sub(r'(?:##\s*){2,}', '## ', text)
@@ -52,7 +42,6 @@ def format_to_markdown(text: str) -> str:
 
     lines = text.split('\n')
     cleaned_lines = []
-    
     is_after_header = False
 
     for line in lines:
@@ -70,10 +59,7 @@ def format_to_markdown(text: str) -> str:
             continue
 
         if re.match(r'^(#+|\*|-|\+|\d+\.)\s', stripped):
-            if stripped.startswith("#"):
-                is_after_header = True
-            else:
-                is_after_header = False
+            is_after_header = stripped.startswith("#")
             cleaned_lines.append(stripped)
             continue
 
@@ -96,7 +82,6 @@ def format_to_markdown(text: str) -> str:
                     cleaned_lines.append(f"&nbsp;&nbsp;&nbsp;&nbsp;{stripped}")
             else:
                 cleaned_lines.append(f"&nbsp;&nbsp;&nbsp;&nbsp;{stripped}")
-            
             is_after_header = False
             continue
 
@@ -111,16 +96,46 @@ def format_to_markdown(text: str) -> str:
         is_after_header = False
 
     result = "\n".join(cleaned_lines)
-    result = re.sub(r'\n{3,}', '\n\n', result)
+    return re.sub(r'\n{3,}', '\n\n', result).strip()
 
-    return result.strip()
+def format_readable_text(text: str) -> str:
+    """노트 본문의 LaTeX 수식 및 텍스트 가독성 자동 보정"""
+    if not text or not str(text).strip():
+        return "*작성된 내용이 없습니다.*"
     
+    text_str = str(text)
+    
+    def replace_bracket_math(match):
+        formula = match.group(1).strip()
+        formula_clean = re.sub(r'_\{([a-zA-Z0-9_\-]+)\}', r'_{\\text{\1}}', formula)
+        return f"\n\n$$\n{formula_clean}\n$$\n\n"
+
+    text_str = re.sub(r'\(([^)]*?=[^)]*?\\[a-zA-Z]+[^)]*?)\)', replace_bracket_math, text_str)
+    
+    def clean_latex_block(match):
+        formula = match.group(1)
+        formula_clean = re.sub(r'_\{([a-zA-Z0-9_\-]+)\}', r'_{\\text{\1}}', formula)
+        return f"\n$$\n{formula_clean}\n$$\n"
+
+    return re.sub(r'\$\$(.*?)\$\$', clean_latex_block, text_str, flags=re.DOTALL)
+
+def render_formatted_content(text: str):
+    """서식 적용 공통 렌더링"""
+    st.markdown(
+        f"""
+        <div class="custom-markdown-box">
+            {format_readable_text(text)}
+        </div>
+        """,
+        unsafe_allow_html=True
+    )
+
 # -----------------------------------------------------------------------------
-# 3. Google Sheets 연동 헬퍼 및 데이터 입출력 함수
+# 3. Google Sheets 연동 및 데이터 입출력 함수 (안전성 보장)
 # -----------------------------------------------------------------------------
 @st.cache_resource
 def get_gspread_client():
-    """Streamlit Secrets 인증으로 gspread 클라이언트 생성 (private_key \n 자동 보정)"""
+    """gspread 클라이언트 인증"""
     try:
         scope = [
             "https://www.googleapis.com/auth/spreadsheets",
@@ -136,11 +151,10 @@ def get_gspread_client():
         )
         return gspread.authorize(credentials)
     except Exception as e:
-        st.error(f"Google API 인증 실패: {e}")
         return None
 
 def get_kst_today():
-    """한국 표준시(KST: UTC+9) 기준 오늘 날짜 구하기"""
+    """KST 기준 오늘 날짜"""
     kst = timezone(timedelta(hours=9))
     return datetime.now(kst).date()
 
@@ -155,14 +169,6 @@ def load_notes():
             
             notes = []
             for row in rows:
-                if len(row) == 1 and row[0]:
-                    try:
-                        data = json.loads(row[0])
-                        if isinstance(data, list):
-                            return data
-                    except Exception:
-                        pass
-                
                 if len(row) >= 2 and row[1]:
                     try:
                         note_item = json.loads(row[1])
@@ -170,11 +176,10 @@ def load_notes():
                             notes.append(note_item)
                     except Exception:
                         pass
-            
             if notes or rows == []:
                 return notes
     except Exception as e:
-        st.warning(f"구글 시트 노트 로드 실패, 로컬 파일로 시도합니다: {e}")
+        st.warning(f"구글 시트 노트 로드 실패 (로컬 데이터로 대체합니다): {e}")
 
     if os.path.exists(NOTES_FILE):
         try:
@@ -186,10 +191,10 @@ def load_notes():
     return []
 
 def save_notes(notes):
-    """학습노트 데이터 저장"""
+    """학습노트 데이터 저장 (안전한 JSON 교체 방식)"""
     try:
         with open(NOTES_FILE, "w", encoding="utf-8") as f:
-            f.write(json.dumps(notes, ensure_ascii=False, indent=2))
+            json.dump(notes, f, ensure_ascii=False, indent=2)
     except Exception:
         pass
 
@@ -205,14 +210,13 @@ def save_notes(notes):
                 note_id = str(note.get("id", ""))
                 json_val = json.dumps(note, ensure_ascii=False)
                 
-                if len(json_val) > 48000:
+                # 셀 용량 초과 시 문법이 깨지지 않도록 이미지만 안전 제거
+                if len(json_val) > 45000:
                     note_copy = note.copy()
-                    if "image" in note_copy:
-                        note_copy["image"] = "[이미지 데이터 용량 초과로 생략됨]"
+                    note_copy["images"] = []
+                    note_copy["image_base64"] = ""
+                    note_copy["content"] = note_copy.get("content", "") + "\n\n*(용량 초과로 첨부 이미지가 생략되어 저장되었습니다.)*"
                     json_val = json.dumps(note_copy, ensure_ascii=False)
-                    
-                    if len(json_val) > 48000:
-                        json_val = json_val[:48000] + "...(내용 생략)"
                 
                 rows_to_update.append([note_id, json_val])
             
@@ -221,12 +225,12 @@ def save_notes(notes):
                 sh.update(f"A1:B{len(rows_to_update)}", rows_to_update)
             sheet_saved = True
     except Exception as e:
-        st.error(f"구글 시트 노트 저장 오류: {e}")
+        st.error(f"구글 시트 저장 중 오류가 발생했습니다: {e}")
 
     return sheet_saved
 
 def load_user_data():
-    """기출문제 학습 데이터 로드 (A열: 문제명, B열: JSON 분할 로드)"""
+    """기출문제 학습 데이터 로드"""
     try:
         gc = get_gspread_client()
         if gc and "sheets" in st.secrets:
@@ -246,7 +250,7 @@ def load_user_data():
             if data:
                 return data
     except Exception as e:
-        st.warning(f"구글 시트 기출데이터 로드 실패, 로컬 파일로 시도합니다: {e}")
+        st.warning(f"구글 시트 기출 데이터 로드 실패: {e}")
 
     if os.path.exists(USER_DATA_FILE):
         try:
@@ -258,10 +262,10 @@ def load_user_data():
     return {}
 
 def save_user_data(data):
-    """기출문제 학습 데이터 저장 (A열: 문제명, B열: JSON 분할 저장)"""
+    """기출문제 데이터 저장 (JSON 파손 완전 예방)"""
     try:
         with open(USER_DATA_FILE, "w", encoding="utf-8") as f:
-            f.write(json.dumps(data, ensure_ascii=False, indent=2))
+            json.dump(data, f, ensure_ascii=False, indent=2)
     except Exception:
         pass
 
@@ -277,8 +281,14 @@ def save_user_data(data):
                     rows_to_update.append([q_key, str(q_val)])
                 else:
                     json_val = json.dumps(q_val, ensure_ascii=False)
-                    if len(json_val) > 48000:
-                        json_val = json_val[:48000]
+                    
+                    if len(json_val) > 45000:
+                        q_val_copy = q_val.copy()
+                        if "image_notes" in q_val_copy and len(q_val_copy["image_notes"]) > 0:
+                            for item in q_val_copy["image_notes"]:
+                                item["image_base64"] = "[구글 시트 용량 초과로 이미지 데이터 생략됨]"
+                        json_val = json.dumps(q_val_copy, ensure_ascii=False)
+                    
                     rows_to_update.append([q_key, json_val])
             
             sh.clear()
@@ -286,20 +296,17 @@ def save_user_data(data):
                 sh.update(f"A1:B{len(rows_to_update)}", rows_to_update)
             return True
     except Exception as e:
-        st.error(f"구글 시트 기출데이터 저장 오류: {e}")
+        st.error(f"구글 시트 학습 데이터 저장 실패: {e}")
         return False
 
 def convert_image_to_base64(uploaded_file):
-    """이미지를 base64 텍스트로 인코딩"""
+    """이미지 base64 변환"""
     if uploaded_file is not None:
         return base64.b64encode(uploaded_file.getvalue()).decode()
     return None
 
-# -----------------------------------------------------------------------------
-# 4. UI 및 텍스트/수식 포맷팅 헬퍼 함수
-# -----------------------------------------------------------------------------
 def render_mini_calendar():
-    """커스텀 미니 달력 HTML 생성 함수"""
+    """커스텀 미니 달력 HTML"""
     today = get_kst_today()
     year, month, today_day = today.year, today.month, today.day
     
@@ -341,42 +348,8 @@ def render_mini_calendar():
     html += "</tbody></table></div>"
     return html
 
-def format_readable_text(text: str) -> str:
-    """노트 본문의 LaTeX 수식 및 텍스트 가독성 자동 보정"""
-    if not text or not str(text).strip():
-        return "*작성된 내용이 없습니다.*"
-    
-    text_str = str(text)
-    
-    def replace_bracket_math(match):
-        formula = match.group(1).strip()
-        formula_clean = re.sub(r'_\{([a-zA-Z0-9_\-]+)\}', r'_{\\text{\1}}', formula)
-        return f"\n\n$$\n{formula_clean}\n$$\n\n"
-
-    text_str = re.sub(r'\(([^)]*?=[^)]*?\\[a-zA-Z]+[^)]*?)\)', replace_bracket_math, text_str)
-    
-    def clean_latex_block(match):
-        formula = match.group(1)
-        formula_clean = re.sub(r'_\{([a-zA-Z0-9_\-]+)\}', r'_{\\text{\1}}', formula)
-        return f"\n$$\n{formula_clean}\n$$\n"
-
-    text_str = re.sub(r'\$\$(.*?)\$\$', clean_latex_block, text_str, flags=re.DOTALL)
-
-    return text_str
-
-def render_formatted_content(text: str):
-    """기출문제 및 학습노트에 동일한 들여쓰기 서식을 강제 적용하는 전용 렌더링 함수"""
-    st.markdown(
-        f"""
-        <div class="custom-markdown-box">
-            {format_readable_text(text)}
-        </div>
-        """,
-        unsafe_allow_html=True
-    )
-
 # -----------------------------------------------------------------------------
-# 5. 세션 상태 초기화
+# 4. 세션 상태 초기화
 # -----------------------------------------------------------------------------
 if "user_data" not in st.session_state or not isinstance(st.session_state.user_data, dict):
     loaded_data = load_user_data()
@@ -405,7 +378,7 @@ if "current_q" not in st.session_state:
     st.session_state.current_q = None
 
 # -----------------------------------------------------------------------------
-# 6. 정제된 CSS 스타일 적용
+# 5. 정제된 CSS 스타일 적용
 # -----------------------------------------------------------------------------
 st.markdown("""
     <style>
@@ -413,17 +386,14 @@ st.markdown("""
             padding-top: 2.0rem !important;
             padding-bottom: 1.5rem !important;
         }
-        
         div[data-testid="stMarkdownContainer"] h1 {
             font-size: 1.4rem !important;
             margin-top: 0px !important;
             margin-bottom: 0.8rem !important;
         }
-
         section[data-testid="stSidebar"] {
             width: 280px !important;
         }
-
         section[data-testid="stSidebar"] div.stButton > button {
             width: 100% !important;
             height: 34px !important;
@@ -437,36 +407,30 @@ st.markdown("""
             padding: 0 4px !important;
             letter-spacing: -0.3px !important;
         }
-
         section[data-testid="stSidebar"] div.stButton > button:hover {
             background-color: #222222 !important;
             border-color: #666666 !important;
         }
-
         section[data-testid="stSidebar"] div[data-testid="stTextInput"],
         section[data-testid="stSidebar"] div[data-testid="stSelectbox"],
         section[data-testid="stSidebar"] div[data-testid="stMultiSelect"] {
             margin-bottom: 12px !important;
             margin-top: 2px !important;
         }
-
         section[data-testid="stSidebar"] div[data-testid="stCheckbox"] {
             margin-top: 8px !important;
             margin-bottom: 12px !important;
         }
-
         section[data-testid="stSidebar"] label {
             margin-bottom: 3px !important;
             padding: 0 !important;
         }
-
         section[data-testid="stSidebar"] label p {
             font-size: 0.82rem !important;
             font-weight: 600 !important;
             letter-spacing: -0.3px !important;
             margin: 0 !important;
         }
-
         section[data-testid="stSidebar"] input,
         section[data-testid="stSidebar"] div[data-baseweb="select"] *,
         div[data-baseweb="popover"] * {
@@ -474,13 +438,11 @@ st.markdown("""
             letter-spacing: -0.4px !important;
             line-height: 1.0 !important;
         }
-
         section[data-testid="stSidebar"] div[data-baseweb="select"] > div {
             min-height: 30px !important;
             padding: 1px 4px !important;
             line-height: 1.0 !important;
         }
-
         section[data-testid="stSidebar"] div[data-baseweb="tag"] {
             margin: 1px 2px !important;
             padding: 0px 4px !important;
@@ -488,69 +450,58 @@ st.markdown("""
             line-height: 1.0 !important;
             border-radius: 4px !important;
         }
-
         section[data-testid="stSidebar"] div[data-baseweb="tag"] span {
             font-size: 0.75rem !important;
             letter-spacing: -0.4px !important;
             line-height: 1.0 !important;
         }
-
         section[data-testid="stSidebar"] div[data-testid="stCheckbox"] span {
             font-size: 0.8rem !important;
             letter-spacing: -0.3px !important;
             line-height: 1.1 !important;
         }
-
         .custom-markdown-box {
             width: 100% !important;
         }
-
         .custom-markdown-box h1, .custom-markdown-box h2,
         .custom-markdown-box h3, .custom-markdown-box h4,
         .custom-markdown-box h5, .custom-markdown-box h6 {
             margin-left: 0px !important;
             margin-bottom: 0.5rem !important;
         }
-
         .custom-markdown-box p {
             margin-left: 1.2rem !important;
             word-break: keep-all !important;
             overflow-wrap: break-word !important;
             line-height: 1.65 !important;
         }
-
         .custom-markdown-box ol, .custom-markdown-box ul {
             margin-left: 1.2rem !important;
             padding-left: 1.2rem !important;
             margin-bottom: 0.8rem !important;
         }
-
         .custom-markdown-box li {
             margin-bottom: 0.4rem !important;
             line-height: 1.65 !important;
             word-break: keep-all !important;
             overflow-wrap: break-word !important;
         }
-
         .custom-markdown-box li > p {
             margin-left: 0px !important;
             display: inline !important;
         }
-
         section[data-testid="stSidebar"] div[data-testid="stHorizontalBlock"] {
             gap: 6px !important;
             align-items: center !important;
             width: 100% !important;
             margin-top: 6px !important;
         }
-
         section[data-testid="stSidebar"] div[data-testid="stMarkdownContainer"],
         section[data-testid="stSidebar"] div[data-testid="stMarkdownContainer"] > p {
             width: 100% !important;
             margin: 0 !important;
             padding: 0 !important;
         }
-
         .dday-box {
             background-color: #000000;
             color: #ffffff;
@@ -568,7 +519,6 @@ st.markdown("""
             margin: 0 !important;
             padding: 0 !important;
         }
-
         .header-aligned-buttons {
             margin-top: 0px !important;
             margin-bottom: 0.6rem !important;
@@ -578,7 +528,7 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # -----------------------------------------------------------------------------
-# 7. 데이터 로드 헬퍼
+# 6. 데이터 로드 헬퍼
 # -----------------------------------------------------------------------------
 @st.cache_data
 def load_excel_data(uploaded_file):
@@ -606,7 +556,7 @@ def load_excel_data(uploaded_file):
     return df
 
 # -----------------------------------------------------------------------------
-# 8. 사이드바 구성
+# 7. 사이드바 구성
 # -----------------------------------------------------------------------------
 with st.sidebar:
     uploaded_file = st.file_uploader("📂 엑셀 파일 업로드", type=['xlsx', 'xls'])
@@ -704,7 +654,7 @@ with st.sidebar:
             st.rerun()
 
 # -----------------------------------------------------------------------------
-# 9. 필터링 조건 적용
+# 8. 필터링 조건 적용
 # -----------------------------------------------------------------------------
 filtered_df = df.copy()
 
@@ -726,7 +676,7 @@ if sort_by_clicks:
     filtered_df = filtered_df.sort_values(by='조회수', ascending=False)
 
 # -----------------------------------------------------------------------------
-# 10. 우측 화면 (리스트 뷰 vs 상세 뷰 vs 학습노트)
+# 9. 우측 화면 (기출문제 리스트 / 상세 / 학습노트 관리)
 # -----------------------------------------------------------------------------
 if st.session_state.main_mode == "exam":
     if not st.session_state.show_detail:
@@ -813,9 +763,7 @@ if st.session_state.main_mode == "exam":
             "🖼️ 이미지 및 설명 자료"
         ])
     
-        # ---------------------------------------------------------------------
-        # TAB 1: 답안 개념 설명 (2번 탭과 위치 완전 수평 맞춤)
-        # ---------------------------------------------------------------------
+        # TAB 1: 답안 개념 설명
         with tab1:
             key_hide_concept = f"hide_concept_{q_text}"
             if key_hide_concept not in st.session_state:
@@ -832,8 +780,6 @@ if st.session_state.main_mode == "exam":
                 if st.button(toggle_label, key=f"btn_toggle_concept_{q_text}", use_container_width=True):
                     if f"concept_area_{q_text}" in st.session_state:
                         c_text = st.session_state[f"concept_area_{q_text}"]
-                        if len(c_text) > 48000:
-                            c_text = c_text[:48000]
                         st.session_state.user_data[q_text]['concept'] = c_text
                         save_user_data(st.session_state.user_data)
                     st.session_state[key_hide_concept] = not is_concept_hidden
@@ -843,8 +789,6 @@ if st.session_state.main_mode == "exam":
                 if st.button("💾 저장하기", key=f"save_concept_{q_text}", type="primary", use_container_width=True):
                     if f"concept_area_{q_text}" in st.session_state:
                         c_text = st.session_state[f"concept_area_{q_text}"]
-                        if len(c_text) > 48000:
-                            c_text = c_text[:48000]
                         st.session_state.user_data[q_text]['concept'] = c_text
                     save_user_data(st.session_state.user_data)
                     st.toast("개념 설명이 성공적으로 저장되었습니다!")
@@ -869,9 +813,7 @@ if st.session_state.main_mode == "exam":
                 else:
                     st.caption("작성된 개념 설명이 없습니다. '입력창 보이기'를 눌러 내용을 입력해 보세요.")
     
-        # ---------------------------------------------------------------------
         # TAB 2: 모범 답안
-        # ---------------------------------------------------------------------
         with tab2:
             key_hide_answer = f"hide_answer_{q_text}"
             if key_hide_answer not in st.session_state:
@@ -888,10 +830,6 @@ if st.session_state.main_mode == "exam":
                 if st.button(toggle_label, key=f"btn_toggle_answer_{q_text}", use_container_width=True):
                     if f"answer_area_{q_text}" in st.session_state:
                         answer_content = st.session_state[f"answer_area_{q_text}"]
-                        if len(answer_content) > 48000:
-                            answer_content = answer_content[:48000]
-                            st.warning("구글 시트 셀 용량 제한으로 인해 모범 답안 내용이 일부 잘려 저장되었습니다.")
-                            
                         st.session_state.user_data[q_text]['answer'] = answer_content
                         save_user_data(st.session_state.user_data)
                     st.session_state[key_hide_answer] = not is_answer_hidden
@@ -901,10 +839,6 @@ if st.session_state.main_mode == "exam":
                 if st.button("💾 저장하기", key=f"save_answer_{q_text}", type="primary", use_container_width=True):
                     if f"answer_area_{q_text}" in st.session_state:
                         answer_content = st.session_state[f"answer_area_{q_text}"]
-                        if len(answer_content) > 48000:
-                            answer_content = answer_content[:48000]
-                            st.warning("구글 시트 셀 용량 제한으로 인해 모범 답안 내용이 일부 잘려 저장되었습니다.")
-                            
                         st.session_state.user_data[q_text]['answer'] = answer_content
                     save_user_data(st.session_state.user_data)
                     st.toast("모범 답안이 성공적으로 저장되었습니다!")
@@ -929,9 +863,7 @@ if st.session_state.main_mode == "exam":
                 else:
                     st.caption("작성된 모범 답안이 없습니다. '입력창 보이기'를 눌러 내용을 입력해 보세요.")
     
-        # ---------------------------------------------------------------------
         # TAB 3: 추가자료 및 메모
-        # ---------------------------------------------------------------------
         with tab3:
             key_edit_memo = f"edit_memo_{q_text}"
             key_memo_area = f"memo_area_{q_text}"
@@ -949,17 +881,11 @@ if st.session_state.main_mode == "exam":
                     if st.button("💾 저장하기", key=f"save_memo_{q_text}", type="primary", use_container_width=True):
                         if key_memo_area in st.session_state:
                             memo_content = st.session_state[key_memo_area]
-                            if len(memo_content) > 48000:
-                                memo_content = memo_content[:48000]
-                                st.warning("구글 시트 용량 제한으로 인해 내용이 일부 잘려 저장되었습니다.")
-                            
                             st.session_state.user_data[q_text]['memo'] = memo_content
                             save_user_data(st.session_state.user_data)
                             st.toast("메모가 저장되었습니다!")
-                        
                         st.session_state[key_edit_memo] = False
                         st.rerun()
-
                 else:
                     if st.button("✏️ 수정하기", key=f"btn_edit_memo_{q_text}", use_container_width=True):
                         st.session_state[key_edit_memo] = True
@@ -982,12 +908,9 @@ if st.session_state.main_mode == "exam":
                 else:
                     st.info("등록된 추가자료나 메모가 없습니다. 우측 상단의 '✏️ 수정하기' 버튼을 눌러 작성해 보세요.")
     
-        # ---------------------------------------------------------------------
         # TAB 4: 구글 검색
-        # ---------------------------------------------------------------------
         with tab4:
             st.markdown("### 4. 구글 검색")
-            
             search_query = st.text_input("검색어 입력", value=q_text)
             
             if search_query:
@@ -1005,9 +928,7 @@ if st.session_state.main_mode == "exam":
                     unsafe_allow_html=True
                 )
     
-        # ---------------------------------------------------------------------
         # TAB 5: 이미지 및 설명 자료
-        # ---------------------------------------------------------------------
         with tab5:
             st.markdown("### 5. 이미지 및 설명 자료")
             
@@ -1027,17 +948,7 @@ if st.session_state.main_mode == "exam":
                 if st.button("💾 이미지 및 설명 저장", key=f"btn_save_img_{q_text}", type="primary"):
                     if uploaded_img is not None:
                         b64_str = convert_image_to_base64(uploaded_img)
-                        saved_filename = f"{int(time.time())}_{uploaded_img.name}"
-                        file_path = os.path.join(IMAGE_DIR, saved_filename)
-                        
-                        try:
-                            with open(file_path, "wb") as f:
-                                f.write(uploaded_img.getbuffer())
-                        except Exception:
-                            pass
-                        
                         new_image_item = {
-                            "file_path": file_path,
                             "image_base64": b64_str,
                             "caption": img_caption if img_caption else uploaded_img.name,
                             "note": img_note
@@ -1051,14 +962,12 @@ if st.session_state.main_mode == "exam":
                         st.warning("업로드할 이미지 파일을 선택해 주세요.")
     
             st.write("---")
-    
             image_notes_list = q_data.get('image_notes', [])
     
             if not image_notes_list:
                 st.caption("저장된 이미지 자료가 없습니다. 상단의 '➕ 새 이미지 및 설명 추가하기'를 눌러 자료를 등록해 보세요.")
             else:
                 st.markdown("#### 🖼️ 저장된 이미지 목록")
-                
                 options_label = [f"[{i+1}] {item.get('caption', '제목 없음')}" for i, item in enumerate(image_notes_list)]
                 
                 selected_img_idx = st.selectbox(
@@ -1069,22 +978,19 @@ if st.session_state.main_mode == "exam":
                 )
                 
                 selected_item = image_notes_list[selected_img_idx]
-                
                 st.write("")
                 col_img, col_text = st.columns([6, 4], gap="medium")
     
                 with col_img:
                     st.markdown(f"##### 📷 {selected_item.get('caption', '이미지')}")
-                    if selected_item.get("image_base64"):
+                    if selected_item.get("image_base64") and "생략됨" not in selected_item["image_base64"]:
                         try:
                             img_bytes = base64.b64decode(selected_item["image_base64"])
                             st.image(img_bytes, use_container_width=True)
                         except Exception:
                             st.error("이미지를 디코딩할 수 없습니다.")
-                    elif os.path.exists(selected_item.get('file_path', '')):
-                        st.image(selected_item['file_path'], use_container_width=True)
                     else:
-                        st.error("저장된 이미지 파일을 찾을 수 없습니다.")
+                        st.info("이미지 데이터가 구글 시트 용량 조정을 위해 생략되었습니다.")
     
                 with col_text:
                     key_edit_item = f"edit_item_{selected_img_idx}_{q_text}"
@@ -1113,17 +1019,8 @@ if st.session_state.main_mode == "exam":
                                 st.rerun()
 
                     if st.session_state[key_edit_item]:
-                        st.text_input(
-                            "제목/캡션 수정", 
-                            value=selected_item.get('caption', ''), 
-                            key=f"edit_cap_{selected_img_idx}_{q_text}"
-                        )
-                        st.text_area(
-                            "설명 내용 수정", 
-                            value=selected_item.get('note', ''), 
-                            height=200, 
-                            key=f"edit_note_{selected_img_idx}_{q_text}"
-                        )
+                        st.text_input("제목/캡션 수정", value=selected_item.get('caption', ''), key=f"edit_cap_{selected_img_idx}_{q_text}")
+                        st.text_area("설명 내용 수정", value=selected_item.get('note', ''), height=200, key=f"edit_note_{selected_img_idx}_{q_text}")
                     else:
                         note_content = selected_item.get('note', '')
                         if note_content:
@@ -1134,11 +1031,6 @@ if st.session_state.main_mode == "exam":
                     
                     st.write("---")
                     if st.button("🗑️ 선택된 이미지 삭제", key=f"del_img_{selected_img_idx}_{q_text}"):
-                        if os.path.exists(selected_item.get('file_path', '')):
-                            try:
-                                os.remove(selected_item['file_path'])
-                            except Exception:
-                                pass
                         st.session_state.user_data[q_text]['image_notes'].pop(selected_img_idx)
                         save_user_data(st.session_state.user_data)
                         st.toast("이미지 자료가 삭제되었습니다.")
@@ -1151,7 +1043,7 @@ elif st.session_state.main_mode == "note":
     if "note_sub_mode" not in st.session_state:
         st.session_state.note_sub_mode = "list"
 
-    # [1] 학습노트 상세 보기 화면
+    # [1] 학습노트 상세 보기
     if st.session_state.note_sub_mode == "detail" and st.session_state.selected_note_id:
         note = next((n for n in st.session_state.notes if n["id"] == st.session_state.selected_note_id), None)
         
@@ -1209,7 +1101,7 @@ elif st.session_state.main_mode == "note":
                 st.session_state.selected_note_id = None
                 st.rerun()
 
-    # [2] 학습노트 편집 화면
+    # [2] 학습노트 편집
     elif st.session_state.note_sub_mode == "edit" and st.session_state.selected_note_id:
         note = next((n for n in st.session_state.notes if n["id"] == st.session_state.selected_note_id), None)
         
@@ -1303,7 +1195,7 @@ elif st.session_state.main_mode == "note":
                     st.session_state.selected_note_id = None
                     st.rerun()
 
-    # [3] 학습노트 메인 리스트 화면
+    # [3] 학습노트 메인 리스트
     else:
         st.markdown("<h1>📖 학습노트 관리</h1>", unsafe_allow_html=True)
         st.write("나만의 금형기술사 서브노트 및 개념 정리 노트 목록입니다. 목록에서 노트를 선택하여 상세 내용을 확인하세요.")
@@ -1373,7 +1265,6 @@ elif st.session_state.main_mode == "note":
                             st.error("노트 제목을 입력해주세요.")
                         else:
                             formatted_content = format_to_markdown(new_content)
-                                
                             links_list = [line.strip() for line in new_links_raw.split('\n') if line.strip()]
                             imgs_list = []
                             if uploaded_imgs:
