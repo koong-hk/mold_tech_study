@@ -301,30 +301,28 @@ def save_user_data(data):
         st.error(f"구글 시트 학습 데이터 저장 실패: {e}")
         return False
 
+import io
+from PIL import Image
+
 def convert_image_to_base64(uploaded_file, max_size=(800, 800), quality=75):
     """
-    업로드된 이미지를 리사이징 및 압축하여 Base64 용량을 극적으로 줄여주는 함수
-    (구글 시트 셀 용량 제한 50,000자 이내로 맞춤)
+    업로드된 이미지를 800px 이하로 축소 및 JPEG 압축하여 
+    Base64 문자열 용량을 구글 시트 셀 한도(50,000자) 이내로 줄이는 함수
     """
     if uploaded_file is None:
         return None
     try:
-        # 이미지 열기 및 RGB 변환
         img = Image.open(uploaded_file)
         if img.mode in ("RGBA", "P"):
             img = img.convert("RGB")
         
-        # 해상도 축소 (비율 유지)
         img.thumbnail(max_size, Image.Resampling.LANCZOS)
         
-        # 바이트 스트림으로 JPEG 압축 저장
         buffer = io.BytesIO()
         img.save(buffer, format="JPEG", quality=quality, optimize=True)
         
-        # Base64 인코딩
         return base64.b64encode(buffer.getvalue()).decode('utf-8')
     except Exception as e:
-        st.error(f"이미지 압축 중 오류 발생: {e}")
         return None
 
 
@@ -1304,7 +1302,7 @@ elif st.session_state.main_mode == "note":
                                 "content": formatted_content,
                                 "links": links_list,
                                 "images": imgs_list,
-                                "updated_at": datetime.strftime("%Y-%m-%d %H:%M")
+                                "updated_at": datetime.now().strftime("%Y-%m-%d %H:%M")
                             }
                             st.session_state.notes.insert(0, new_entry)
                             save_notes(st.session_state.notes)
