@@ -11,6 +11,8 @@ import pandas as pd
 import streamlit as st
 import gspread
 from google.oauth2.service_account import Credentials
+from PIL import Image
+import io
 
 
 # -----------------------------------------------------------------------------
@@ -299,11 +301,32 @@ def save_user_data(data):
         st.error(f"구글 시트 학습 데이터 저장 실패: {e}")
         return False
 
-def convert_image_to_base64(uploaded_file):
-    """이미지 base64 변환"""
-    if uploaded_file is not None:
-        return base64.b64encode(uploaded_file.getvalue()).decode()
-    return None
+def convert_image_to_base64(uploaded_file, max_size=(800, 800), quality=75):
+    """
+    업로드된 이미지를 리사이징 및 압축하여 Base64 용량을 극적으로 줄여주는 함수
+    (구글 시트 셀 용량 제한 50,000자 이내로 맞춤)
+    """
+    if uploaded_file is None:
+        return None
+    try:
+        # 이미지 열기 및 RGB 변환
+        img = Image.open(uploaded_file)
+        if img.mode in ("RGBA", "P"):
+            img = img.convert("RGB")
+        
+        # 해상도 축소 (비율 유지)
+        img.thumbnail(max_size, Image.Resampling.LANCZOS)
+        
+        # 바이트 스트림으로 JPEG 압축 저장
+        buffer = io.BytesIO()
+        img.save(buffer, format="JPEG", quality=quality, optimize=True)
+        
+        # Base64 인코딩
+        return base64.b64encode(buffer.getvalue()).decode('utf-8')
+    except Exception as e:
+        st.error(f"이미지 압축 중 오류 발생: {e}")
+        return None
+
 
 def render_mini_calendar():
     """커스텀 미니 달력 HTML"""
