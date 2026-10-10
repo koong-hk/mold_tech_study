@@ -1,4 +1,4 @@
-# Backup 261009 2305
+# Backup 261010 0933
 
 import base64
 import calendar
@@ -1285,7 +1285,7 @@ elif st.session_state.main_mode == "note":
                         if not new_title.strip():
                             st.error("노트 제목을 입력해주세요.")
                         else:
-                            formatted_content = format_to_markdown(new_content)
+                            formatted_content = new_content.strip()
                             links_list = [line.strip() for line in new_links_raw.split('\n') if line.strip()]
                             imgs_list = []
                             if uploaded_imgs:
