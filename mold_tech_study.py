@@ -66,7 +66,7 @@ def format_to_markdown(text: str) -> str:
             continue
 
         if re.match(r'^\d+\.\s+[^\n]+', stripped) and len(stripped) < 40:
-            cleaned_lines.append(f"### {stripped}")
+            cleaned_lines.append(f"##### {stripped}")
             is_after_header = True
             continue
 
