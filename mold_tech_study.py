@@ -38,7 +38,7 @@ def format_to_markdown(text: str) -> str:
     text = text.replace('\r\n', '\n').replace('\r', '\n')
     text = re.sub(r'-\s+-\s+', '- ', text)
     text = re.sub(r'(?:###\s*){2,}', '### ', text)
-    text = re.sub(r'(?:##\s*){2,}', '## ', text)
+    text = re.sub(r'(?:##\s*){2,}', '#### ', text)
     text = re.sub(r'(?:📌\s*){2,}', '📌 ', text)
     text = re.sub(r'(?:###\s*📌\s*){2,}', '### 📌 ', text)
 
@@ -61,9 +61,14 @@ def format_to_markdown(text: str) -> str:
             continue
 
         if re.match(r'^(#+|\*|-|\+|\d+\.)\s', stripped):
-            is_after_header = stripped.startswith("#")
+            # 기존 ##로 시작하는 줄이 있다면 ####로 변경하여 저장
+            if stripped.startswith('## '):
+                stripped = stripped.replace('## ', '#### ', 1)
+        
+            is_after_header = stripped.startswith('#')
             cleaned_lines.append(stripped)
             continue
+
 
         if re.match(r'^\d+\.\s+[^\n]+', stripped) and len(stripped) < 40:
             cleaned_lines.append(f"##### {stripped}")
