@@ -1,4 +1,4 @@
-# Backup 261114 2030
+# Backup 261114 2210
 
 import base64
 import calendar
@@ -14,7 +14,8 @@ from google.oauth2.service_account import Credentials
 from PIL import Image
 import io
 import uuid
-from google.auth.transport.requests import AuthorizedSession
+from google.auth.transport.requests import AuthorizedSession, Request
+from google.oauth2.credentials import Credentials as OAuthCredentials
 
 
 # -----------------------------------------------------------------------------
@@ -289,12 +290,39 @@ def save_user_data(data):
         return False
 
 
-@st.cache_resource
 def get_drive_session():
-    """Sheets와 동일한 서비스 계정으로 Drive 파일에 접근."""
-    info = dict(st.secrets["gcp_service_account"])
-    info["private_key"] = info["private_key"].replace("\\n", "\n")
-    creds = Credentials.from_service_account_info(info, scopes=["https://www.googleapis.com/auth/drive"])
+    """Google Sheets와 분리된 사용자 OAuth 인증으로 Drive 접근.
+
+    Streamlit Secrets의 refresh_token으로 액세스 토큰을 갱신한다.
+    서비스 계정 인증은 Google Sheets에서만 사용한다.
+    """
+    try:
+        cfg = st.secrets["drive_oauth"]
+        client_id = str(cfg["client_id"]).strip()
+        client_secret = str(cfg["client_secret"]).strip()
+        refresh_token = str(cfg["refresh_token"]).strip()
+    except (KeyError, FileNotFoundError) as exc:
+        raise RuntimeError(
+            "Streamlit Secrets에 [drive_oauth] client_id, client_secret, "
+            "refresh_token을 모두 등록해야 합니다."
+        ) from exc
+
+    creds = OAuthCredentials(
+        token=None,
+        refresh_token=refresh_token,
+        token_uri="https://oauth2.googleapis.com/token",
+        client_id=client_id,
+        client_secret=client_secret,
+        scopes=["https://www.googleapis.com/auth/drive"],
+    )
+    try:
+        creds.refresh(Request())
+    except Exception as exc:
+        raise RuntimeError(
+            "Google Drive OAuth 토큰 갱신 실패. refresh_token 유효기간, "
+            "OAuth 클라이언트 설정 및 테스트/프로덕션 게시 상태를 확인하세요. "
+            f"({type(exc).__name__}: {exc})"
+        ) from exc
     return AuthorizedSession(creds)
 
 
@@ -322,7 +350,14 @@ def upload_image_to_drive(uploaded_file):
     session = get_drive_session()
     resp = session.post("https://www.googleapis.com/upload/drive/v3/files", params={"uploadType":"multipart", "fields":"id,name,size", "supportsAllDrives":"true"},
         files={"metadata": (None, json.dumps(meta), "application/json"), "file": ("image.jpg", payload, "image/jpeg")}, timeout=90)
-    resp.raise_for_status()
+    if not resp.ok:
+        try:
+            detail = resp.json().get("error", {})
+            message = detail.get("message", resp.text[:500])
+            reasons = [e.get("reason", "") for e in detail.get("errors", [])]
+            raise RuntimeError(f"Drive 업로드 HTTP {resp.status_code}: {message} ({', '.join(reasons)})")
+        except ValueError:
+            raise RuntimeError(f"Drive 업로드 HTTP {resp.status_code}: {resp.text[:500]}")
     file_id = resp.json()["id"]
     try:
         restored = download_drive_image(file_id)
