@@ -13,6 +13,8 @@ import gspread
 from google.oauth2.service_account import Credentials
 from PIL import Image
 import io
+import uuid
+from google.auth.transport.requests import AuthorizedSession
 
 
 # -----------------------------------------------------------------------------
@@ -198,43 +200,37 @@ def load_notes():
     return []
 
 def save_notes(notes):
-    """학습노트 데이터 저장 (안전한 JSON 교체 방식)"""
-    try:
-        with open(NOTES_FILE, "w", encoding="utf-8") as f:
-            json.dump(notes, f, ensure_ascii=False, indent=2)
-    except Exception:
-        pass
-
-    sheet_saved = False
+    """원격 저장 성공 시에만 완료. 기존 시트를 먼저 지우지 않는다."""
     try:
         gc = get_gspread_client()
-        if gc and "sheets" in st.secrets:
-            sheet_name = st.secrets["sheets"]["notes_sheet"]
-            sh = gc.open(sheet_name).sheet1
-            
-            rows_to_update = []
-            for note in notes:
-                note_id = str(note.get("id", ""))
-                json_val = json.dumps(note, ensure_ascii=False)
-                
-                # 셀 용량 초과 시 문법이 깨지지 않도록 이미지만 안전 제거
-                if len(json_val) > 45000:
-                    note_copy = note.copy()
-                    note_copy["images"] = []
-                    note_copy["image_base64"] = ""
-                    note_copy["content"] = note_copy.get("content", "") + "\n\n*(용량 초과로 첨부 이미지가 생략되어 저장되었습니다.)*"
-                    json_val = json.dumps(note_copy, ensure_ascii=False)
-                
-                rows_to_update.append([note_id, json_val])
-            
-            sh.clear()
-            if rows_to_update:
-                sh.update(f"A1:B{len(rows_to_update)}", rows_to_update)
-            sheet_saved = True
+        if not gc or "sheets" not in st.secrets:
+            raise RuntimeError("Google Sheets 인증/설정이 없습니다.")
+        sh = gc.open(st.secrets["sheets"]["notes_sheet"]).sheet1
+        rows = []
+        for note in notes:
+            payload = json.dumps(note, ensure_ascii=False)
+            if len(payload) > 45000:
+                raise ValueError(f"노트 '{note.get('title', '')}' 용량 초과: 기존 이미지를 먼저 Drive로 이전하세요.")
+            rows.append([str(note.get("id", "")), payload])
+        # 쓰기 성공 전에 기존 데이터 삭제 금지. 행별 갱신 후 남은 행만 정리.
+        if rows:
+            sh.update(range_name=f"A1:B{len(rows)}", values=rows)
+        existing = len(sh.col_values(1))
+        if existing > len(rows):
+            sh.batch_clear([f"A{len(rows)+1}:B{existing}"])
+        _atomic_local_json(NOTES_FILE, notes)
+        return True
     except Exception as e:
-        st.error(f"구글 시트 저장 중 오류가 발생했습니다: {e}")
+        st.error(f"학습노트 저장 실패: {e}")
+        return False
 
-    return sheet_saved
+
+def _atomic_local_json(path, value):
+    temp = path + ".tmp"
+    with open(temp, "w", encoding="utf-8") as f:
+        json.dump(value, f, ensure_ascii=False, indent=2)
+    os.replace(temp, path)
+
 
 def load_user_data():
     """기출문제 학습 데이터 로드"""
@@ -269,45 +265,116 @@ def load_user_data():
     return {}
 
 def save_user_data(data):
-    """기출문제 데이터 저장 (JSON 파손 완전 예방)"""
-    try:
-        with open(USER_DATA_FILE, "w", encoding="utf-8") as f:
-            json.dump(data, f, ensure_ascii=False, indent=2)
-    except Exception:
-        pass
-
+    """이미지 데이터가 잘리는 저장을 거부한다."""
     try:
         gc = get_gspread_client()
-        if gc and "sheets" in st.secrets:
-            sheet_name = st.secrets["sheets"]["study_data_sheet"]
-            sh = gc.open(sheet_name).sheet1
-            
-            rows_to_update = []
-            for q_key, q_val in data.items():
-                if q_key == "_d_day_target":
-                    rows_to_update.append([q_key, str(q_val)])
-                else:
-                    json_val = json.dumps(q_val, ensure_ascii=False)
-                    
-                    if len(json_val) > 45000:
-                        q_val_copy = q_val.copy()
-                        if "image_notes" in q_val_copy and len(q_val_copy["image_notes"]) > 0:
-                            for item in q_val_copy["image_notes"]:
-                                item["image_base64"] = "[구글 시트 용량 초과로 이미지 데이터 생략됨]"
-                        json_val = json.dumps(q_val_copy, ensure_ascii=False)
-                    
-                    rows_to_update.append([q_key, json_val])
-            
-            sh.clear()
-            if rows_to_update:
-                sh.update(f"A1:B{len(rows_to_update)}", rows_to_update)
-            return True
+        if not gc or "sheets" not in st.secrets:
+            raise RuntimeError("Google Sheets 인증/설정이 없습니다.")
+        sh = gc.open(st.secrets["sheets"]["study_data_sheet"]).sheet1
+        rows = []
+        for key, value in data.items():
+            payload = str(value) if key == "_d_day_target" else json.dumps(value, ensure_ascii=False)
+            if len(payload) > 45000:
+                raise ValueError(f"문제 '{str(key)[:40]}' 저장 용량 초과. 기존 이미지를 Drive로 이전하세요.")
+            rows.append([str(key), payload])
+        if rows:
+            sh.update(range_name=f"A1:B{len(rows)}", values=rows)
+        existing = len(sh.col_values(1))
+        if existing > len(rows):
+            sh.batch_clear([f"A{len(rows)+1}:B{existing}"])
+        _atomic_local_json(USER_DATA_FILE, data)
+        return True
     except Exception as e:
-        st.error(f"구글 시트 학습 데이터 저장 실패: {e}")
+        st.error(f"기출문제 데이터 저장 실패: {e}")
         return False
 
-import io
-from PIL import Image
+
+@st.cache_resource
+def get_drive_session():
+    """Sheets와 동일한 서비스 계정으로 Drive 파일에 접근."""
+    info = dict(st.secrets["gcp_service_account"])
+    info["private_key"] = info["private_key"].replace("\\n", "\n")
+    creds = Credentials.from_service_account_info(info, scopes=["https://www.googleapis.com/auth/drive"])
+    return AuthorizedSession(creds)
+
+
+def get_drive_folder_id():
+    try:
+        return str(st.secrets["drive"]["folder_id"]).strip()
+    except Exception:
+        raise RuntimeError('Streamlit Secrets에 [drive] folder_id 설정이 필요합니다.')
+
+
+def upload_image_to_drive(uploaded_file):
+    """이미지 업로드 후 실제 다운로드까지 검증. 실패하면 예외 발생."""
+    img = Image.open(uploaded_file)
+    if img.mode not in ("RGB", "L"):
+        img = img.convert("RGB")
+    if img.mode == "L":
+        img = img.convert("RGB")
+    img.thumbnail((1600, 1600), Image.Resampling.LANCZOS)
+    buf = io.BytesIO()
+    img.save(buf, format="JPEG", quality=83, optimize=True)
+    payload = buf.getvalue()
+    import requests
+    folder = get_drive_folder_id()
+    meta = {"name": f"mold_{uuid.uuid4().hex}.jpg", "parents": [folder], "mimeType": "image/jpeg"}
+    session = get_drive_session()
+    resp = session.post("https://www.googleapis.com/upload/drive/v3/files", params={"uploadType":"multipart", "fields":"id,name,size", "supportsAllDrives":"true"},
+        files={"metadata": (None, json.dumps(meta), "application/json"), "file": ("image.jpg", payload, "image/jpeg")}, timeout=90)
+    resp.raise_for_status()
+    file_id = resp.json()["id"]
+    try:
+        restored = download_drive_image(file_id)
+        if not restored:
+            raise RuntimeError("업로드 검증 중 이미지가 비어 있습니다.")
+    except Exception:
+        try:
+            session.delete(f"https://www.googleapis.com/drive/v3/files/{file_id}", timeout=20)
+        except Exception:
+            pass
+        raise
+    return {"drive_file_id": file_id}
+
+
+@st.cache_data(ttl=1800, show_spinner=False)
+def download_drive_image(file_id):
+    resp = get_drive_session().get(f"https://www.googleapis.com/drive/v3/files/{file_id}",
+        params={"alt":"media", "supportsAllDrives":"true"}, timeout=60)
+    resp.raise_for_status()
+    return resp.content
+
+
+def image_bytes_from_item(item):
+    if isinstance(item, dict) and item.get("drive_file_id"):
+        return download_drive_image(item["drive_file_id"])
+    b64 = item.get("image_base64", "") if isinstance(item, dict) else item
+    if not b64 or "생략됨" in b64:
+        raise ValueError("기존 저장 데이터에 이미지 원본이 없습니다.")
+    return base64.b64decode(b64)
+
+
+def migrate_image_item(item):
+    """기존 base64를 Drive로 이전하며 원본은 저장 완료 전까지 유지."""
+    if isinstance(item, dict) and item.get("drive_file_id"):
+        return item, False
+    raw = image_bytes_from_item(item)
+    fileobj = io.BytesIO(raw)
+    migrated = upload_image_to_drive(fileobj)
+    if isinstance(item, dict):
+        new_item = {k:v for k,v in item.items() if k != "image_base64"}
+        new_item.update(migrated)
+    else:
+        new_item = migrated
+    return new_item, True
+
+
+def show_stored_image(item):
+    try:
+        st.image(image_bytes_from_item(item), use_container_width=True)
+    except Exception as e:
+        st.warning(f"이미지를 불러올 수 없습니다: {e}")
+
 
 def convert_image_to_base64(uploaded_file, max_size=(800, 800), quality=75):
     """
@@ -973,17 +1040,17 @@ if st.session_state.main_mode == "exam":
                 
                 if st.button("💾 이미지 및 설명 저장", key=f"btn_save_img_{q_text}", type="primary"):
                     if uploaded_img is not None:
-                        b64_str = convert_image_to_base64(uploaded_img)
-                        new_image_item = {
-                            "image_base64": b64_str,
-                            "caption": img_caption if img_caption else uploaded_img.name,
-                            "note": img_note
-                        }
-                        
-                        st.session_state.user_data[q_text]['image_notes'].append(new_image_item)
-                        save_user_data(st.session_state.user_data)
-                        st.toast("이미지와 설명이 성공적으로 저장되었습니다!")
-                        st.rerun()
+                        try:
+                            new_image_item = upload_image_to_drive(uploaded_img)
+                            new_image_item.update({"caption": img_caption or uploaded_img.name, "note": img_note})
+                            st.session_state.user_data[q_text]['image_notes'].append(new_image_item)
+                            if save_user_data(st.session_state.user_data):
+                                st.toast("이미지와 설명이 성공적으로 저장되었습니다!")
+                                st.rerun()
+                            else:
+                                st.session_state.user_data[q_text]['image_notes'].pop()
+                        except Exception as e:
+                            st.error(f"이미지 저장 실패: {e}")
                     else:
                         st.warning("업로드할 이미지 파일을 선택해 주세요.")
     
@@ -1009,15 +1076,8 @@ if st.session_state.main_mode == "exam":
     
                 with col_img:
                     st.markdown(f"##### 📷 {selected_item.get('caption', '이미지')}")
-                    if selected_item.get("image_base64") and "생략됨" not in selected_item["image_base64"]:
-                        try:
-                            img_bytes = base64.b64decode(selected_item["image_base64"])
-                            st.image(img_bytes, use_container_width=True)
-                        except Exception:
-                            st.error("이미지를 디코딩할 수 없습니다.")
-                    else:
-                        st.info("이미지 데이터가 구글 시트 용량 조정을 위해 생략되었습니다.")
-    
+                    show_stored_image(selected_item)
+
                 with col_text:
                     key_edit_item = f"edit_item_{selected_img_idx}_{q_text}"
                     if key_edit_item not in st.session_state:
@@ -1103,12 +1163,8 @@ elif st.session_state.main_mode == "note":
                 st.markdown("**🖼️ 첨부 이미지**")
                 img_cols = st.columns(min(len(imgs), 3))
                 for idx, b64_img in enumerate(imgs):
-                    try:
-                        img_bytes = base64.b64decode(b64_img)
-                        with img_cols[idx % 3]:
-                            st.image(img_bytes, use_container_width=True)
-                    except Exception:
-                        pass
+                    with img_cols[idx % 3]:
+                        show_stored_image(b64_img)
 
             links = note.get("links", [])
             if not links and note.get("link"):
@@ -1179,11 +1235,7 @@ elif st.session_state.main_mode == "note":
                     img_cols = st.columns(3)
                     for img_idx, b64_img in enumerate(existing_imgs):
                         with img_cols[img_idx % 3]:
-                            try:
-                                img_bytes = base64.b64decode(b64_img)
-                                st.image(img_bytes, use_container_width=True)
-                            except Exception:
-                                pass
+                            show_stored_image(b64_img)
                             is_delete = st.checkbox("삭제", key=f"chk_del_edit_{note['id']}_{img_idx}")
                             if not is_delete:
                                 keep_imgs.append(b64_img)
@@ -1197,9 +1249,11 @@ elif st.session_state.main_mode == "note":
                 if submit_edit:
                     if uploaded_imgs:
                         for img_f in uploaded_imgs:
-                            b64_str = convert_image_to_base64(img_f)
-                            if b64_str:
-                                keep_imgs.append(b64_str)
+                            try:
+                                keep_imgs.append(upload_image_to_drive(img_f))
+                            except Exception as e:
+                                st.error(f"이미지 업로드 실패: {e}")
+                                st.stop()
 
                     note["category"] = edit_cat
                     note["title"] = edit_title
@@ -1208,7 +1262,8 @@ elif st.session_state.main_mode == "note":
                     note["images"] = keep_imgs
                     note["updated_at"] = datetime.now().strftime("%Y-%m-%d %H:%M")
                     
-                    save_notes(st.session_state.notes)
+                    if not save_notes(st.session_state.notes):
+                        st.stop()
                     st.toast("노트가 성공적으로 수정되었습니다!")
                     st.session_state.note_sub_mode = "detail"
                     st.rerun()
@@ -1237,6 +1292,48 @@ elif st.session_state.main_mode == "note":
             if st.button("💾 저장", type="primary", use_container_width=True):
                 save_notes(st.session_state.notes)
                 st.toast("학습노트가 저장되었습니다!", icon="✅")
+
+        with st.expander("🛠️ 기존 Base64 이미지 Google Drive로 이전"):
+            st.caption("먼저 JSON 백업을 다운로드하세요. 기존 이미지가 생략된 경우 원본 백업이 필요합니다.")
+            if st.button("기존 이미지 Drive로 이전 시작", key="migrate_all_images"):
+                import copy
+                notes_copy = copy.deepcopy(st.session_state.notes)
+                data_copy = copy.deepcopy(st.session_state.user_data)
+                migrated_count = 0
+                errors = []
+                for note in notes_copy:
+                    originals = note.get("images", []) or ([note["image_base64"]] if note.get("image_base64") else [])
+                    result = []
+                    for item in originals:
+                        try:
+                            new_item, changed = migrate_image_item(item)
+                            result.append(new_item)
+                            migrated_count += int(changed)
+                        except Exception as e:
+                            result.append(item)
+                            errors.append(f"노트 {note.get('title')}: {e}")
+                    if originals:
+                        note["images"] = result
+                        note.pop("image_base64", None)
+                for question, entry in data_copy.items():
+                    if not isinstance(entry, dict):
+                        continue
+                    for i, item in enumerate(entry.get("image_notes", [])):
+                        try:
+                            new_item, changed = migrate_image_item(item)
+                            entry["image_notes"][i] = new_item
+                            migrated_count += int(changed)
+                        except Exception as e:
+                            errors.append(f"문제 {str(question)[:30]} 이미지 {i+1}: {e}")
+                ok_notes = save_notes(notes_copy)
+                ok_data = save_user_data(data_copy)
+                if ok_notes:
+                    st.session_state.notes = notes_copy
+                if ok_data:
+                    st.session_state.user_data = data_copy
+                st.info(f"Drive 이전 {migrated_count}건 시도 / 학습노트 저장: {ok_notes} / 기출문제 저장: {ok_data}")
+                for err in errors[:15]:
+                    st.warning(err)
 
         if show_backup_menu:
             with st.expander("💾 노트 데이터 백업 / 복원 (JSON 파일)", expanded=True):
@@ -1295,9 +1392,11 @@ elif st.session_state.main_mode == "note":
                             imgs_list = []
                             if uploaded_imgs:
                                 for img_f in uploaded_imgs:
-                                    b64_str = convert_image_to_base64(img_f)
-                                    if b64_str:
-                                        imgs_list.append(b64_str)
+                                    try:
+                                        imgs_list.append(upload_image_to_drive(img_f))
+                                    except Exception as e:
+                                        st.error(f"이미지 업로드 실패: {e}")
+                                        st.stop()
                     
                             new_id = int(time.time())
                             new_entry = {
@@ -1310,7 +1409,8 @@ elif st.session_state.main_mode == "note":
                                 "updated_at": datetime.now().strftime("%Y-%m-%d %H:%M")
                             }
                             st.session_state.notes.insert(0, new_entry)
-                            save_notes(st.session_state.notes)
+                            if not save_notes(st.session_state.notes):
+                                st.stop()
                             st.toast("새 학습노트가 추가되었습니다!", icon="✅")
                     
                             st.session_state.selected_note_id = new_id
