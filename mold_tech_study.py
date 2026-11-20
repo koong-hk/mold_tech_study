@@ -163,6 +163,124 @@ def get_gspread_client():
     except Exception as e:
         return None
 
+def render_card_audio(title, narration):
+    import streamlit.components.v1 as components
+
+    payload = json.dumps(f"{title}. {narration}").replace("<", "\\u003c")
+    components.html("""
+        <button id="play" type="button">▶ 한국어로 듣기</button>
+        <button id="stop" type="button">■ 정지</button>
+        <span id="status" role="status"></span>
+        <script>
+          const speech = window.speechSynthesis;
+          const status = document.getElementById("status");
+          document.getElementById("play").onclick = () => {
+            if (!speech || !window.SpeechSynthesisUtterance) {
+              status.textContent = "이 브라우저에서 음성 재생을 지원하지 않습니다.";
+              return;
+            }
+            speech.cancel();
+            const utterance = new SpeechSynthesisUtterance(PAYLOAD);
+            utterance.lang = "ko-KR";
+            const voice = speech.getVoices().find(v => /^ko\\b/i.test(v.lang));
+            if (voice) utterance.voice = voice;
+            utterance.rate = 0.92;
+            utterance.onstart = () => { status.textContent = "재생 중"; };
+            utterance.onend = () => { status.textContent = ""; };
+            utterance.onerror = event => {
+              if (!["canceled", "interrupted"].includes(event.error)) {
+                status.textContent = "재생할 수 없습니다. 기기의 한국어 음성 설정을 확인하세요.";
+              }
+            };
+            speech.speak(utterance);
+          };
+          document.getElementById("stop").onclick = () => {
+            if (speech) speech.cancel();
+            status.textContent = "";
+          };
+          window.addEventListener("pagehide", () => { if (speech) speech.cancel(); });
+        </script>
+    """.replace("PAYLOAD", payload), height=62)
+
+
+def render_daily_cards():
+    import hmac
+
+    st.title("데일리 암기카드")
+    try:
+        client = get_gspread_client()
+        if client is None:
+            raise RuntimeError()
+        sheet = client.open(st.secrets["sheets"]["notes_sheet"]).worksheet("데일리암기카드")
+        rows = sheet.get_all_values()[1:]
+    except Exception:
+        st.error("암기카드 Google Sheets에 연결할 수 없습니다.")
+        return
+
+    cards = {}
+    for row_number, row in enumerate(rows, start=2):
+        if len(row) >= 7 and row[0]:
+            cards.setdefault(row[0], (row_number, row[:7]))
+    if not cards:
+        st.info("저장된 암기카드가 없습니다.")
+        return
+
+    query = st.text_input("암기카드 검색", placeholder="제목, 키워드, 날짜").strip().casefold().split()
+    categories = sorted({row[3] for _, row in cards.values()})
+    category = st.selectbox("분야", ["전체", *categories])
+    matches = [
+        card_id for card_id, (_, row) in cards.items()
+        if (category == "전체" or row[3] == category)
+        and all(term in " ".join(row[1:]).casefold() for term in query)
+    ]
+    if not matches:
+        st.info("검색 조건에 맞는 카드가 없습니다.")
+        return
+
+    def card_label(card_id):
+        _, date, time, category, title, _, _ = cards[card_id][1]
+        return f"{date} {time} · {category} · {title}"
+
+    matches.sort(key=lambda card_id: tuple(cards[card_id][1][1:3]), reverse=True)
+    card_id = st.selectbox("암기카드 목록", matches, format_func=card_label)
+    row_number, original = cards[card_id]
+    _, _, _, category, title, summary, narration = original
+    st.subheader(title)
+    st.markdown(summary)
+    render_card_audio(title, narration)
+
+    with st.expander("암기카드 편집"):
+        password = str(st.secrets.get("chat_study_password", ""))
+        if not password:
+            st.info("편집을 사용하려면 Streamlit Secrets에 chat_study_password를 설정하세요.")
+            return
+        with st.form(f"daily_card_edit_{card_id}"):
+            new_category = st.text_input("분야", category, max_chars=100)
+            new_title = st.text_input("제목", title, max_chars=200)
+            new_summary = st.text_area("요약 (마크다운)", summary, max_chars=12000, height=250)
+            new_narration = st.text_area("읽어줄 내용", narration, max_chars=3000)
+            entered = st.text_input("편집 비밀번호", type="password")
+            submitted = st.form_submit_button("변경 저장")
+        if not submitted:
+            return
+        if not hmac.compare_digest(entered.encode("utf-8"), password.encode("utf-8")):
+            st.error("비밀번호가 맞지 않습니다.")
+            return
+        values = [value.strip() for value in (new_category, new_title, new_summary, new_narration)]
+        if not all(values):
+            st.error("분야, 제목, 요약, 읽어줄 내용을 모두 입력하세요.")
+            return
+        try:
+            if sheet.row_values(row_number)[:7] != original:
+                st.warning("카드가 변경되었습니다. 새로고침 후 다시 편집하세요.")
+                return
+            sheet.update(range_name=f"D{row_number}:G{row_number}", values=[values], raw=True)
+        except Exception:
+            st.error("카드 변경을 저장할 수 없습니다.")
+            return
+        st.rerun()
+
+
 def render_chat_study():
     st.title("금형기술사 예상문제")
     daily_tab, records_tab = st.tabs(["일일 예상문제", "채팅 학습 기록"])
@@ -756,6 +874,11 @@ with st.sidebar:
                  type="primary" if st.session_state.main_mode == "chat_study" else "secondary"):
         st.session_state.main_mode = "chat_study"
         st.rerun()
+    if st.button("데일리 암기카드", use_container_width=True,
+                 type="primary" if st.session_state.main_mode == "daily_cards" else "secondary"):
+        st.session_state.main_mode = "daily_cards"
+        st.rerun()
+
     col_nav1, col_nav2 = st.columns(2)
     with col_nav1:
         btn_exam_type = "primary" if st.session_state.main_mode == "exam" else "secondary"
@@ -873,7 +996,9 @@ if sort_by_clicks:
 # -----------------------------------------------------------------------------
 # 9. 우측 화면 (기출문제 리스트 / 상세 / 학습노트 관리)
 # -----------------------------------------------------------------------------
-if st.session_state.main_mode == "chat_study":
+if st.session_state.main_mode == "daily_cards":
+    render_daily_cards()
+elif st.session_state.main_mode == "chat_study":
     render_chat_study()
 elif st.session_state.main_mode == "exam":
     if not st.session_state.show_detail:
