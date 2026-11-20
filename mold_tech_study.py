@@ -163,6 +163,69 @@ def get_gspread_client():
     except Exception as e:
         return None
 
+def render_chat_study():
+    st.title("금형기술사 예상문제")
+    daily_tab, records_tab = st.tabs(["일일 예상문제", "채팅 학습 기록"])
+    try:
+        client = get_gspread_client()
+        if client is None:
+            raise RuntimeError()
+        workbook = client.open(st.secrets["sheets"]["notes_sheet"])
+    except Exception:
+        st.error("학습노트 Google Sheets에 연결할 수 없습니다.")
+        return
+
+    with daily_tab:
+        try:
+            rows = workbook.worksheet("일일예상문제").get_all_values()[1:]
+        except Exception:
+            st.error("일일 예상문제를 불러올 수 없습니다.")
+        else:
+            issues = {row[0]: row[1] for row in rows if len(row) >= 2 and row[0] and row[1]}
+            if issues:
+                date = st.selectbox("알림 날짜 (한국시간)", sorted(issues, reverse=True))
+                st.markdown(issues[date])
+            else:
+                st.info("저장된 예상문제가 없습니다.")
+
+    with records_tab:
+        import hmac
+
+        password = str(st.secrets.get("chat_study_password", ""))
+        if not password:
+            st.info("채팅 학습 기록을 열려면 Streamlit Secrets에 chat_study_password를 설정하세요.")
+            return
+        if not st.session_state.get("chat_study_unlocked"):
+            with st.form("chat_study_unlock"):
+                entered = st.text_input("학습 기록 비밀번호", type="password")
+                submitted = st.form_submit_button("열기")
+            if submitted:
+                if hmac.compare_digest(entered.encode("utf-8"), password.encode("utf-8")):
+                    st.session_state.chat_study_unlocked = True
+                    st.rerun()
+                st.error("비밀번호가 맞지 않습니다.")
+            return
+        if st.button("학습 기록 잠그기"):
+            st.session_state.pop("chat_study_unlocked", None)
+            st.rerun()
+        try:
+            rows = workbook.worksheet("채팅학습기록").get_all_values()[1:]
+        except Exception:
+            st.error("채팅 학습 기록을 불러올 수 없습니다.")
+            return
+        records = {row[0]: row[1:5] for row in rows if len(row) >= 5 and row[0]}
+        if not records:
+            st.info("저장된 채팅 학습 기록이 없습니다.")
+        for date, question, answer, feedback in reversed(list(records.values())):
+            with st.expander(f"{date} · {question.splitlines()[0][:100] if question else '문제'}"):
+                st.markdown("**문제**")
+                st.markdown(question)
+                st.markdown("**내 답안**")
+                st.markdown(answer)
+                st.markdown("**피드백**")
+                st.markdown(feedback)
+
+
 def get_kst_today():
     """KST 기준 오늘 날짜"""
     kst = timezone(timedelta(hours=9))
@@ -689,6 +752,10 @@ def load_excel_data(uploaded_file):
 with st.sidebar:
     uploaded_file = st.file_uploader("📂 엑셀 파일 업로드", type=['xlsx', 'xls'])
     
+    if st.button("예상문제 · 채팅 기록", use_container_width=True,
+                 type="primary" if st.session_state.main_mode == "chat_study" else "secondary"):
+        st.session_state.main_mode = "chat_study"
+        st.rerun()
     col_nav1, col_nav2 = st.columns(2)
     with col_nav1:
         btn_exam_type = "primary" if st.session_state.main_mode == "exam" else "secondary"
@@ -806,7 +873,9 @@ if sort_by_clicks:
 # -----------------------------------------------------------------------------
 # 9. 우측 화면 (기출문제 리스트 / 상세 / 학습노트 관리)
 # -----------------------------------------------------------------------------
-if st.session_state.main_mode == "exam":
+if st.session_state.main_mode == "chat_study":
+    render_chat_study()
+elif st.session_state.main_mode == "exam":
     if not st.session_state.show_detail:
         st.markdown("<h1>📚 금형기술사 기출문제 리스트</h1>", unsafe_allow_html=True)
         st.write("필터링된 문제 목록입니다. 목록에서 문제를 선택한 후 하단 버튼을 클릭하면 상세 학습 화면으로 이동합니다.")
