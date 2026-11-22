@@ -281,6 +281,69 @@ def render_daily_cards():
         st.rerun()
 
 
+FLASHCARD_HEADING = re.compile(r"(?:(?:데일리|일일|오늘의?)\s*)?암기\s*카드(?:\s|[:：(\-–—]|$)")
+PROBLEM_HEADING = re.compile(
+    r"^(?:예상\s*)?(?:문제\s*\d+|제\s*\d+\s*(?:번|문제)|"
+    r"\d+\s*(?:번\s*(?:문제)?|[.)：:\-–—]\s*(?:예상\s*문제|사출|프레스|다이\s*캐스팅))|"
+    r"(?:사출(?:성형|금형)?|프레스(?:금형)?|다이\s*캐스팅)\s*(?:문제|[:：\-–—]|$))",
+    re.IGNORECASE,
+)
+
+
+def split_daily_problems(text):
+    """저장된 마크다운에서 문제 단위로 나누고 암기카드 섹션을 제외한다."""
+    problems = []
+    current = []
+    card_level = None
+    problem_level = None
+    fence = None
+
+    for line in text.splitlines():
+        marker = re.match(r"^ {0,3}(`{3,}|~{3,})(.*)$", line)
+        if marker:
+            token, suffix = marker.groups()
+            if fence is None:
+                fence = token
+            elif token.startswith(fence) and not suffix.strip():
+                fence = None
+            if card_level is None:
+                current.append(line)
+            continue
+        if fence:
+            if card_level is None:
+                current.append(line)
+            continue
+
+        stripped = line.strip()
+        heading = re.match(r"^(#{1,6})\s+(.+)$", stripped)
+        level = len(heading[1]) if heading else None
+        title = (heading[2] if heading else stripped).strip("*_ #")
+        title = re.sub(r"^[^\w가-힣]+\s*", "", title)
+        title = re.sub(r"^\d+[.)]\s*(?=(?:데일리|일일|암기))", "", title)
+        if FLASHCARD_HEADING.match(title) and (
+            heading or stripped.startswith(("**", "__")) or len(title) <= 45
+        ):
+            if card_level is None:
+                card_level = level or 0
+            continue
+
+        is_problem = bool(PROBLEM_HEADING.match(title))
+        if card_level is not None:
+            if is_problem and (card_level == 0 or level is not None and level <= card_level):
+                card_level = None
+            else:
+                continue
+        if is_problem and (problem_level is None or (level or 0) == problem_level):
+            if problem_level is not None and current:
+                problems.append("\n".join(current).strip())
+                current = []
+            problem_level = level or 0
+        current.append(line)
+
+    if any(line.strip() for line in current):
+        problems.append("\n".join(current).strip())
+    return problems
+
 def render_chat_study():
     st.title("금형기술사 예상문제")
     daily_tab, records_tab = st.tabs(["일일 예상문제", "채팅 학습 기록"])
@@ -299,10 +362,21 @@ def render_chat_study():
         except Exception:
             st.error("일일 예상문제를 불러올 수 없습니다.")
         else:
-            issues = {row[0]: row[1] for row in rows if len(row) >= 2 and row[0] and row[1]}
+            issues = {}
+            for row in rows:
+                if len(row) >= 2 and row[0] and row[1]:
+                    problems = issues.setdefault(row[0], [])
+                    for problem in split_daily_problems(row[1]):
+                        if problem not in problems:
+                            problems.append(problem)
+            issues = {day: problems for day, problems in issues.items() if problems}
             if issues:
                 date = st.selectbox("알림 날짜 (한국시간)", sorted(issues, reverse=True))
-                st.markdown(issues[date])
+                problems = issues[date]
+                tabs = st.tabs([f"문제 {index}" for index in range(1, len(problems) + 1)])
+                for tab, problem in zip(tabs, problems):
+                    with tab:
+                        st.markdown(problem)
             else:
                 st.info("저장된 예상문제가 없습니다.")
 
@@ -334,8 +408,15 @@ def render_chat_study():
         records = {row[0]: row[1:5] for row in rows if len(row) >= 5 and row[0]}
         if not records:
             st.info("저장된 채팅 학습 기록이 없습니다.")
+            return
+        by_date = {}
         for date, question, answer, feedback in reversed(list(records.values())):
-            with st.expander(f"{date} · {question.splitlines()[0][:100] if question else '문제'}"):
+            by_date.setdefault(date, []).append((question, answer, feedback))
+        selected_date = st.selectbox("학습 날짜", sorted(by_date, reverse=True))
+        problems = by_date[selected_date]
+        tabs = st.tabs([f"문제 {index}" for index in range(1, len(problems) + 1)])
+        for tab, (question, answer, feedback) in zip(tabs, problems):
+            with tab:
                 st.markdown("**문제**")
                 st.markdown(question)
                 st.markdown("**내 답안**")
