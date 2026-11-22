@@ -290,33 +290,40 @@ PROBLEM_HEADING = re.compile(
 )
 
 
+ANSWER_HEADING = re.compile(
+    r"^(?:\d+[.)]\s*)?(?:(?:15\s*줄|압축형|예시|기술사|문제별)\s*)*"
+    r"(?:모범\s*답안|해설|정답|답안)(?=\W|\d|$)"
+)
+PROBLEM_NUMBER = re.compile(
+    r"^(?:(?:예상\s*)?문제\s*(\d+)|제\s*(\d+)\s*(?:번|문제)|"
+    r"(\d+)\s*(?:번|[.)：:\-–—]))"
+)
+SUBJECT = re.compile(r"사출|프레스|다이\s*캐스팅")
+
+
 def split_daily_problems(text):
-    """저장된 마크다운에서 문제 단위로 나누고 암기카드 섹션을 제외한다."""
-    problems = []
-    current = []
+    """저장된 마크다운에서 문제와 모범답안을 짝짓고 암기카드를 제외한다."""
+    sections = []
+    lines = []
     card_level = None
-    problem_level = None
     fence = None
 
     for line in text.splitlines():
         marker = re.match(r"^ {0,3}(`{3,}|~{3,})(.*)$", line)
-        if marker:
-            token, suffix = marker.groups()
-            if fence is None:
-                fence = token
-            elif token.startswith(fence) and not suffix.strip():
-                fence = None
+        if marker or fence:
+            if marker:
+                token, suffix = marker.groups()
+                if fence is None:
+                    fence = token
+                elif token.startswith(fence) and not suffix.strip():
+                    fence = None
             if card_level is None:
-                current.append(line)
-            continue
-        if fence:
-            if card_level is None:
-                current.append(line)
+                lines.append((line, "", 0, False))
             continue
 
         stripped = line.strip()
         heading = re.match(r"^(#{1,6})\s+(.+)$", stripped)
-        level = len(heading[1]) if heading else None
+        level = len(heading[1]) if heading else 0
         title = (heading[2] if heading else stripped).strip("*_ #")
         title = re.sub(r"^[^\w가-힣]+\s*", "", title)
         title = re.sub(r"^\d+[.)]\s*(?=(?:데일리|일일|암기))", "", title)
@@ -324,25 +331,147 @@ def split_daily_problems(text):
             heading or stripped.startswith(("**", "__")) or len(title) <= 45
         ):
             if card_level is None:
-                card_level = level or 0
+                card_level = level
             continue
 
         is_problem = bool(PROBLEM_HEADING.match(title))
         if card_level is not None:
-            if is_problem and (card_level == 0 or level is not None and level <= card_level):
+            if is_problem and (not card_level or 0 < level <= card_level):
                 card_level = None
             else:
                 continue
-        if is_problem and (problem_level is None or (level or 0) == problem_level):
-            if problem_level is not None and current:
-                problems.append("\n".join(current).strip())
-                current = []
-            problem_level = level or 0
-        current.append(line)
+        lines.append((line, title, level, is_problem))
 
-    if any(line.strip() for line in current):
-        problems.append("\n".join(current).strip())
+    def collect(entries):
+        return "\n".join(line for line, _, _, _ in entries).strip()
+
+    # 문제 목록 뒤에 붙는 공동 답안 섹션과 문제별 인라인 답안을 모두 처리한다.
+    current = []
+    problem_level = None
+    for index, entry in enumerate(lines):
+        _, title, level, is_problem = entry
+        is_answer = bool(ANSWER_HEADING.match(title))
+        if is_answer and not numbered_answer_heading(title, level) and sections and any(
+            (candidate_is_problem or numbered_answer_heading(candidate_title, candidate_level))
+            and (not level or not candidate_level or candidate_level >= level)
+            for _, candidate_title, candidate_level, candidate_is_problem in lines[index + 1:]
+        ):
+            sections.append(current)
+            return pair_daily_answers(sections, lines[index + 1:], collect)
+        if is_answer and numbered_answer_heading(title, level) and sections:
+            number, _ = daily_problem_identity(title)
+            first_title = next((part[1] for part in sections[0] if part[3]), "")
+            first_number, _ = daily_problem_identity(first_title)
+            if number == (first_number or 1):
+                sections.append(current)
+                return pair_daily_answers(sections, lines[index:], collect)
+        if is_problem and (problem_level is None or level == problem_level):
+            if problem_level is not None:
+                sections.append(current)
+                current = []
+            problem_level = level
+        current.append(entry)
+
+    if collect(current):
+        sections.append(current)
+    return pair_daily_answers(sections, [], collect)
+
+
+def pair_daily_answers(sections, answer_lines, collect):
+    problems = []
+    identities = []
+    for section in sections:
+        title = next((title for _, title, _, is_problem in section if is_problem), "")
+        identities.append(daily_problem_identity(title))
+        answer_start = next(
+            (index for index, (_, title, _, _) in enumerate(section) if ANSWER_HEADING.match(title)),
+            len(section),
+        )
+        question = collect(section[:answer_start])
+        answer = collect(section[answer_start:])
+        problems.append((question, answer))
+
+    if not answer_lines:
+        return problems
+
+    candidates = [
+        (index, level, daily_problem_identity(title))
+        for index, (_, title, level, is_problem) in enumerate(answer_lines)
+        if is_problem or numbered_answer_heading(title, level)
+    ]
+    if not candidates:
+        return problems
+    heading_level = min(level for _, level, _ in candidates)
+    markers = [(index, identity) for index, level, identity in candidates if level == heading_level]
+    for position, (start, (number, subject)) in enumerate(markers):
+        end = markers[position + 1][0] if position + 1 < len(markers) else len(answer_lines)
+        matches = [
+            index for index, (question_number, question_subject) in enumerate(identities)
+            if (number is not None and question_number == number)
+            or (subject and question_subject == subject and (number is None or question_number is None))
+        ]
+        if not matches and number is not None and 1 <= number <= len(problems):
+            matches = [number - 1] if identities[number - 1][0] is None else []
+        if len(matches) == 1:
+            index = matches[0]
+            question, answer = problems[index]
+            problems[index] = (question, "\n\n".join(filter(None, (answer, collect(answer_lines[start:end])))))
     return problems
+
+
+def numbered_answer_heading(title, level):
+    return bool(
+        re.match(r"^(?:모범\s*답안|해설|답안)\s*[:：]?\s*(?:문제\s*)?\d+", title)
+        or (level and re.match(r"^\d+\s*번", title))
+    )
+
+
+def daily_problem_identity(title):
+    title = re.sub(r"^(?:모범\s*답안|해설|답안)\s*[:：\-–—]?\s*(?=\d)", "문제 ", title)
+    title = re.sub(r"^(?:모범\s*답안|해설|답안)\s*[:：\-–—]?\s*", "", title)
+    number = PROBLEM_NUMBER.match(title)
+    subject = SUBJECT.search(title)
+    return (
+        int(next(value for value in number.groups() if value is not None)) if number else None,
+        re.sub(r"\s+", "", subject[0]) if subject else None,
+    )
+
+
+def render_daily_problem(day, index, question, answer):
+    key = f"{day}_{index}"
+    draft_key = f"daily_draft_{key}"
+    input_key = f"daily_input_{key}"
+
+    def keep_draft():
+        st.session_state[draft_key] = st.session_state[input_key]
+
+    st.markdown(question)
+    if input_key not in st.session_state:
+        st.session_state[input_key] = st.session_state.get(draft_key, "")
+    st.text_area(
+        "풀이 노트",
+        key=input_key,
+        height=200,
+        placeholder="모범답안을 열기 전에 직접 풀어보세요.",
+        on_change=keep_draft,
+    )
+    if not answer:
+        st.caption("이 문제에 연결된 모범답안이 없습니다.")
+        return
+    answer_key = f"daily_answer_visible_{key}"
+    visible = st.session_state.get(answer_key, False)
+
+    def toggle_answer():
+        st.session_state[answer_key] = not st.session_state.get(answer_key, False)
+
+    st.button(
+        "모범답안 숨기기" if visible else "모범답안 보기",
+        key=f"daily_answer_button_{key}",
+        on_click=toggle_answer,
+    )
+    if visible:
+        st.markdown(answer)
+
 
 def render_chat_study():
     st.title("금형기술사 예상문제")
@@ -374,9 +503,9 @@ def render_chat_study():
                 date = st.selectbox("알림 날짜 (한국시간)", sorted(issues, reverse=True))
                 problems = issues[date]
                 tabs = st.tabs([f"문제 {index}" for index in range(1, len(problems) + 1)])
-                for tab, problem in zip(tabs, problems):
+                for index, (tab, (question, answer)) in enumerate(zip(tabs, problems), start=1):
                     with tab:
-                        st.markdown(problem)
+                        render_daily_problem(date, index, question, answer)
             else:
                 st.info("저장된 예상문제가 없습니다.")
 
