@@ -14,6 +14,7 @@ from google.oauth2.service_account import Credentials
 from PIL import Image
 import io
 import uuid
+from google.auth.exceptions import RefreshError
 from google.auth.transport.requests import AuthorizedSession, Request
 from google.oauth2.credentials import Credentials as OAuthCredentials
 
@@ -708,11 +709,17 @@ def get_drive_session():
     )
     try:
         creds.refresh(Request())
-    except Exception as exc:
+    except RefreshError as exc:
+        response = exc.args[1] if len(exc.args) > 1 else None
+        if isinstance(response, dict) and response.get("error") == "invalid_grant":
+            raise RuntimeError(
+                "Google Drive 갱신 토큰이 만료되었거나 취소되었습니다. "
+                "관리자가 기존 OAuth 클라이언트로 Drive 사용 계정을 다시 승인하고 "
+                "Streamlit Secrets의 [drive_oauth] refresh_token을 교체해야 합니다."
+            ) from exc
         raise RuntimeError(
-            "Google Drive OAuth 토큰 갱신 실패. refresh_token 유효기간, "
-            "OAuth 클라이언트 설정 및 테스트/프로덕션 게시 상태를 확인하세요. "
-            f"({type(exc).__name__}: {exc})"
+            "Google Drive 인증을 갱신하지 못했습니다. "
+            "Streamlit Secrets의 [drive_oauth] 설정을 확인하세요."
         ) from exc
     return AuthorizedSession(creds)
 
@@ -735,38 +742,49 @@ def upload_image_to_drive(uploaded_file):
     buf = io.BytesIO()
     img.save(buf, format="JPEG", quality=83, optimize=True)
     payload = buf.getvalue()
-    import requests
     folder = get_drive_folder_id()
     meta = {"name": f"mold_{uuid.uuid4().hex}.jpg", "parents": [folder], "mimeType": "image/jpeg"}
-    session = get_drive_session()
-    resp = session.post("https://www.googleapis.com/upload/drive/v3/files", params={"uploadType":"multipart", "fields":"id,name,size", "supportsAllDrives":"true"},
-        files={"metadata": (None, json.dumps(meta), "application/json"), "file": ("image.jpg", payload, "image/jpeg")}, timeout=90)
-    if not resp.ok:
+    with get_drive_session() as session:
+        resp = session.post("https://www.googleapis.com/upload/drive/v3/files", params={"uploadType":"multipart", "fields":"id,name,size", "supportsAllDrives":"true"},
+            files={"metadata": (None, json.dumps(meta), "application/json"), "file": ("image.jpg", payload, "image/jpeg")}, timeout=90)
+        if not resp.ok:
+            try:
+                detail = resp.json().get("error", {})
+                message = detail.get("message", resp.text[:500])
+                reasons = [e.get("reason", "") for e in detail.get("errors", [])]
+                raise RuntimeError(f"Drive 업로드 HTTP {resp.status_code}: {message} ({', '.join(reasons)})")
+            except ValueError:
+                raise RuntimeError(f"Drive 업로드 HTTP {resp.status_code}: {resp.text[:500]}")
+        file_id = resp.json()["id"]
         try:
-            detail = resp.json().get("error", {})
-            message = detail.get("message", resp.text[:500])
-            reasons = [e.get("reason", "") for e in detail.get("errors", [])]
-            raise RuntimeError(f"Drive 업로드 HTTP {resp.status_code}: {message} ({', '.join(reasons)})")
-        except ValueError:
-            raise RuntimeError(f"Drive 업로드 HTTP {resp.status_code}: {resp.text[:500]}")
-    file_id = resp.json()["id"]
-    try:
-        restored = download_drive_image(file_id)
-        if not restored:
-            raise RuntimeError("업로드 검증 중 이미지가 비어 있습니다.")
-    except Exception:
-        try:
-            session.delete(f"https://www.googleapis.com/drive/v3/files/{file_id}", timeout=20)
+            restored = _fetch_drive_image(session, file_id)
+            if not restored:
+                raise RuntimeError("업로드 검증 중 이미지가 비어 있습니다.")
         except Exception:
-            pass
-        raise
+            try:
+                session.delete(
+                    f"https://www.googleapis.com/drive/v3/files/{file_id}",
+                    params={"supportsAllDrives": "true"},
+                    timeout=20,
+                )
+            except Exception:
+                pass
+            raise
     return {"drive_file_id": file_id}
 
 
 @st.cache_data(ttl=1800, show_spinner=False)
 def download_drive_image(file_id):
-    resp = get_drive_session().get(f"https://www.googleapis.com/drive/v3/files/{file_id}",
-        params={"alt":"media", "supportsAllDrives":"true"}, timeout=60)
+    with get_drive_session() as session:
+        return _fetch_drive_image(session, file_id)
+
+
+def _fetch_drive_image(session, file_id):
+    resp = session.get(
+        f"https://www.googleapis.com/drive/v3/files/{file_id}",
+        params={"alt": "media", "supportsAllDrives": "true"},
+        timeout=60,
+    )
     resp.raise_for_status()
     return resp.content
 
