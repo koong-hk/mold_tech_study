@@ -32,6 +32,8 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 NOTES_FILE = os.path.join(BASE_DIR, "notes.json")
 USER_DATA_FILE = os.path.join(BASE_DIR, "user_study_data.json")
 
+NOTE_CATEGORIES = ("사출금형", "프레스금형", "다이캐스팅", "재료/열처리", "가공/정밀측정", "기타기술")
+
 # -----------------------------------------------------------------------------
 # 헬퍼 함수: 마크다운 자동 변환 및 수식 보정
 # -----------------------------------------------------------------------------
@@ -1681,9 +1683,9 @@ elif st.session_state.main_mode == "note":
                 existing_imgs = [note["image_base64"]]
 
             with st.form(key=f"edit_form_{note['id']}"):
-                cat_list = ["사출금형", "프레스금형", "재료/열처리", "가공/정밀측정", "기타기술"]
-                cat_idx = cat_list.index(note["category"]) if note.get("category") in cat_list else 0
-                edit_cat = st.selectbox("분류 (키워드)", cat_list, index=cat_idx)
+                category = note.get("category")
+                cat_idx = NOTE_CATEGORIES.index(category) if category in NOTE_CATEGORIES else 0
+                edit_cat = st.selectbox("분류 (키워드)", NOTE_CATEGORIES, index=cat_idx)
                 edit_title = st.text_input("노트 제목", value=note.get("title", ""))
                 
                 edit_content = st.text_area(
@@ -1841,7 +1843,7 @@ elif st.session_state.main_mode == "note":
                 with st.form(key="new_note_form", clear_on_submit=True):
                     c1, c2 = st.columns([1, 2])
                     with c1:
-                        new_cat = st.selectbox("분류", ["사출금형", "프레스금형", "재료/열처리", "가공/정밀측정", "기타기술"])
+                        new_cat = st.selectbox("분류", NOTE_CATEGORIES)
                     with c2:
                         new_title = st.text_input("노트 제목", placeholder="예: 2단 방출 시스템의 구조 및 특성")
                     
