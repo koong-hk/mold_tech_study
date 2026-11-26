@@ -2,6 +2,7 @@
 
 import base64
 import calendar
+from collections.abc import Mapping
 from datetime import date, datetime, timedelta, timezone
 import json
 import os
@@ -690,14 +691,29 @@ def get_drive_session():
     """
     try:
         cfg = st.secrets["drive_oauth"]
-        client_id = str(cfg["client_id"]).strip()
-        client_secret = str(cfg["client_secret"]).strip()
-        refresh_token = str(cfg["refresh_token"]).strip()
-    except (KeyError, FileNotFoundError) as exc:
-        raise RuntimeError(
-            "Streamlit Secrets에 [drive_oauth] client_id, client_secret, "
-            "refresh_token을 모두 등록해야 합니다."
-        ) from exc
+    except FileNotFoundError as exc:
+        raise RuntimeError("이 앱의 Streamlit Secrets를 읽을 수 없습니다. 앱의 Settings → Secrets에서 설정을 저장하세요.") from exc
+    except KeyError as exc:
+        raise RuntimeError("Streamlit Secrets에서 [drive_oauth] 섹션을 찾을 수 없습니다. 섹션 이름과 저장한 앱을 확인하세요.") from exc
+
+    if not isinstance(cfg, Mapping):
+        raise RuntimeError("Streamlit Secrets의 drive_oauth를 [drive_oauth] TOML 섹션으로 작성하세요.")
+
+    required_keys = ("client_id", "client_secret", "refresh_token")
+    missing_keys = [key for key in required_keys if key not in cfg]
+    invalid_keys = [
+        key for key in required_keys
+        if key in cfg and (not isinstance(cfg[key], str) or not cfg[key].strip())
+    ]
+    problems = []
+    if missing_keys:
+        problems.append(f"누락된 항목: {', '.join(missing_keys)}")
+    if invalid_keys:
+        problems.append(f"값이 비어 있거나 문자열이 아닌 항목: {', '.join(invalid_keys)}")
+    if problems:
+        raise RuntimeError("Streamlit Secrets의 [drive_oauth] 설정을 확인하세요. " + " / ".join(problems))
+
+    client_id, client_secret, refresh_token = (cfg[key].strip() for key in required_keys)
 
     creds = OAuthCredentials(
         token=None,
