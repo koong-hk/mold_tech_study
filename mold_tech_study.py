@@ -831,13 +831,15 @@ def migrate_image_item(item):
     return new_item, True
 
 
-def show_stored_image(item, *, width=None):
+def show_stored_image(item, *, max_width=None):
     try:
         image = image_bytes_from_item(item)
-        if width is None:
+        if max_width is None:
             st.image(image, use_container_width=True)
         else:
-            st.image(image, width=width)
+            with Image.open(io.BytesIO(image)) as source:
+                display_width = min(source.width, max_width)
+            st.image(image, width=display_width)
     except Exception as e:
         st.warning(f"이미지를 불러올 수 없습니다: {e}")
 
@@ -1643,7 +1645,7 @@ elif st.session_state.main_mode == "note":
                 img_cols = st.columns(min(len(imgs), 3))
                 for idx, b64_img in enumerate(imgs):
                     with img_cols[idx % len(img_cols)]:
-                        show_stored_image(b64_img, width=360)
+                        show_stored_image(b64_img, max_width=720)
 
             links = note.get("links", [])
             if not links and note.get("link"):
